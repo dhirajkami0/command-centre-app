@@ -226,9 +226,9 @@
             w.__villageLocationCache, w.__villageLocationCache?.length];
     }
     function same(a, b) { return a?.length === b?.length && a.every((v, i) => v === b[i]); }
-    function build(marker, value) {
+    function build(marker, value, enrich = false) {
         // Reuse the complete authoritative template; construction occurs only on demand.
-        const html = marker.__staffBuilder(value.s, value.p, value.id, Number(value.p.lat), Number(value.p.lon)).popup;
+        const html = marker.__staffBuilder(value.s, value.p, value.id, Number(value.p.lat), Number(value.p.lon), enrich).popup;
         const template = w.document.createElement('template'); template.innerHTML = html;
         if (historyPending.has(value.id)) {
             const count = template.content.querySelector('[id^="staffPatrolPoints_"]');
@@ -238,6 +238,9 @@
                 distance.textContent = 'History loading…';
         }
         const location = template.content.querySelector('[id^="staffCurrentLocation_"]');
+        const cached = marker.__staffLocation;
+        if (location && !enrich && cached?.key === locationKey(value) && same(cached.version, gisVersion()))
+            location.innerHTML = cached.html;
         const ready = Array.isArray(w.__villageBoundaryGeoJSON?.features) && Array.isArray(w.allCompartmentFeatures);
         if (location && !ready && location.textContent.includes('Outside mapped forest/village boundary'))
             location.textContent = w.__VILLAGE_LOCATION_LOADING__ ? 'GIS data loading…' : 'GIS data unavailable';
@@ -245,6 +248,25 @@
         if (status) status.textContent = '🛰 Live GPS Active — duty enabled; ' +
             (!time(value.p) ? 'fix time unknown' : Date.now() - time(value.p) > 60000 ? 'last fix is stale' : 'recent fix');
         return template;
+    }
+    function locationKey(value) { return JSON.stringify([value.id, value.p.lat, value.p.lon]); }
+    function enrichLocation(marker) {
+        const value = current(marker);
+        if (!value || !marker.isPopupOpen()) return;
+        const key = locationKey(value), version = gisVersion(), cached = marker.__staffLocation;
+        if (cached?.key === key && same(cached.version, version)) return;
+        w.StaffPopup.deferRefresh(marker, () => {
+            const latestValue = current(marker);
+            if (!marker.isPopupOpen() || !latestValue || locationKey(latestValue) !== key || !same(version, gisVersion())) return;
+            const template = build(marker, latestValue, true);
+            const location = template.content.querySelector('[id^="staffCurrentLocation_"]');
+            if (location) {
+                marker.__staffLocation = {key, version, html: location.innerHTML};
+                w.StartupCoordinator?.mark("dynamicPopupEnrichmentCompleted");
+                marker.__staffModel = null;
+                refresh(marker);
+            }
+        });
     }
     function modelKey(value) {
         return JSON.stringify([value.s, value.p, Date.now() - time(value.p) > 60000, historyPending.has(value.id)]);
@@ -286,6 +308,7 @@
             w.StaffPopup.place(marker);
         }
         clock(marker, value);
+        enrichLocation(marker);
     }
     function ensure(s, p, id, lat, lon, builder) {
         const began = diagnostic ? now() : 0;
@@ -309,12 +332,13 @@
             w.staffMarkers[name] = marker; marker.addTo(w.staffLayer);
             w.StaffTrackNavigation.bindPopup(marker, name);
             const stop = () => { w.clearInterval(marker.__staffClock); marker.__staffClock = null; w.StaffPopup.cancelRefresh(marker); };
-            marker.on('popupopen', () => { stop(); refresh(marker); marker.__staffClock = w.setInterval(() => refresh(marker), 1000); });
+            marker.on('popupopen', () => { w.StartupCoordinator?.mark('firstPopupOpened'); stop(); refresh(marker); marker.__staffClock = w.setInterval(() => refresh(marker), 1000); });
             marker.on('popupclose remove', stop);
         }
         refresh(marker);
         w.staffLocationStates ??= Object.create(null);
         w.staffLocationStates[name] = {state: 'POSITION_AVAILABLE', sessionId: id};
+        w.StartupCoordinator?.markerRendered(marker);
         mark('T8'); processing(id, {markerMs: now() - began}); record(id, {markerUpdatedAt: now()}); visibleFrames();
         return {marker, icon: marker.options.icon, popup: marker.__staffPopupFactory};
     }
@@ -343,6 +367,7 @@
         if (fastPending.get(id) === staff) fastPending.delete(id);
         if (fastRunning.get(id) === staff) fastRunning.delete(id);
         drainFast();
+        w.StartupCoordinator?.settled(fastPending.size);
     }
     function beginHistory(id) { historyPending.add(id); }
     function trackFastSeed(id, pid) {
@@ -386,6 +411,8 @@
     }
     w.StaffRendering = {latest, changed, pointTime: time, count: id => index(id)?.count || 0, syncVisible,
         overlapCount: c => groups.get(c)?.size || 0, ensure, refresh, fast, finishFast, release,
+        fastPendingCount: () => fastPending.size,
+        isFastCurrent: (id, staff) => fastPending.get(id) === staff && fastRunning.get(id) === staff,
         beginHistory, completeHistory, selectFast, trackFastSeed, reconcileFastSeeds,
         historyPending: id => historyPending.has(id)};
     const start = () => {

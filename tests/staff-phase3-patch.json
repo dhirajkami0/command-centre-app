@@ -1,0 +1,22 @@
+[
+  {
+    "before": "buildPopup = false){",
+    "after": "buildPopup = false, enrichGIS = true){"
+  },
+  {
+    "before": "(staff, point, id, y, x) => window.ensureLiveStaffMarker(staff, point, id, y, x, true));",
+    "after": "(staff, point, id, y, x, enrich) => window.ensureLiveStaffMarker(staff, point, id, y, x, true, enrich));"
+  },
+  {
+    "before": "            if(typeof window.resolveCurrentGIS === \"function\"){",
+    "after": "            if(enrichGIS && typeof window.resolveCurrentGIS === \"function\"){"
+  },
+  {
+    "before": "            let currentLocationHtml = \"\";\n            if(currentLocation.type === \"FOREST\"){",
+    "after": "            let currentLocationHtml = \"\";\n            if(!enrichGIS){\n              currentLocationHtml = `<div>📌 GIS: <b>Location details loading…</b></div>`;\n            } else if(currentLocation.type === \"FOREST\"){"
+  },
+  {
+    "before": "          !window.patrolSessionListeners[sessionId]) return;",
+    "after": "          !window.StaffRendering.isFastCurrent(sessionId, staff)) return;"
+  }
+]

@@ -180,7 +180,13 @@ function invariants(s,compartments,cells){
     report('upload cannot retry unresolved GIS across a previously excluded gap');
   } catch(error){preservationFailures.push(error.message);}
   assert.deepEqual(preservationFailures,[],'Targeted preservation regressions');
-  const changed=[];for(const [name,body]of original)if(revised.get(name)!==body)changed.push(name);
+  // Reverse only the exact approved display/camera edits for historical source
+  // preservation. Functional checks above still execute the current source.
+  const {restoreCameraChanges} = require('./map-camera-stability.test.cjs');
+  const {restoreStaffPopupChanges} = require('./staff-popup.test.cjs');
+  const {restoreTrackNavigationChanges} = require('./staff-track-navigation.test.cjs');
+  const preservationFunctions = functions(require('./excluded-feature-restorations.cjs').restoreHeatmapChanges(restoreCameraChanges(restoreStaffPopupChanges(restoreTrackNavigationChanges(current)))));
+  const changed=[];for(const [name,body]of original)if(preservationFunctions.get(name)!==body)changed.push(name);
   const approvedInteractionHooks = ['closeHelpForm','saveHelpLocation','startHelpMapSelection'];
   for (const name of approvedInteractionHooks) {
     const body = revised.get(name);
@@ -190,7 +196,7 @@ function invariants(s,compartments,cells){
   assert.deepEqual(changed.filter(name=>!approvedInteractionHooks.includes(name)).sort(),['ggBuildCompletedSessionReportSnapshot','ggReportSaveCellOccurrence','loadStaff','submitEndDuty','uploadPatrolKML'].sort());
   // loadStaff already differed from the historical fixture before this task.
   const headFunctions=functions(execFileSync('git',['show','09c57de:index.html'],{cwd:root,encoding:'utf8',maxBuffer:20e6}));
-  assert.equal(revised.get('loadStaff'),headFunctions.get('loadStaff'));
+  assert.equal(preservationFunctions.get('loadStaff'),headFunctions.get('loadStaff'));
   const remoteNames=new Set(['getDocs','getDoc','collection','query','where','orderBy','onSnapshot','setDoc','updateDoc','addDoc','runTransaction','deleteDoc']);
   function remoteCalls(body){
     const ast=acorn.parse(body,{ecmaVersion:'latest'}),calls=[];
@@ -219,7 +225,7 @@ function invariants(s,compartments,cells){
   assert.equal(normalGISCore(revised.get('ggBuildCompletedSessionReportSnapshot'),true),normalGISCore(original.get('ggBuildCompletedSessionReportSnapshot'),false));
   report('original normal GIS arithmetic/filtering/aggregation unchanged; only local reader replaced');
   // Supplied Apps Script receiver, run against an in-memory fake sheet only.
-  const gas=fs.readFileSync(path.join(root,'audit-input/Code.gs'),'utf8');
+  const gas=fs.readFileSync((process.env.BTR_GIS_RECEIVER_FIXTURE || path.join(root,'audit-input/Code.gs')),'utf8');
   const gasAST=acorn.parse(gas,{ecmaVersion:'latest'}),gasFunction=name=>{
     const node=gasAST.body.find(n=>n.type==='FunctionDeclaration'&&n.id.name===name);
     assert.ok(node,name);return gas.slice(node.start,node.end);

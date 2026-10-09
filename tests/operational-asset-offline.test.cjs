@@ -146,7 +146,7 @@ function setup(local=indexedDB(),remote=new Map()) {
         y.w.operationalAssetMasterCache.data=null;y.w.fb=fb;
         y.w.OperationalAssetConditions.sync();await y.a.synchronizeOutbox();
         assert.equal(y.local.records.get(d.eventId).syncState,'SYNCED');assert.equal(y.h.listeners.length,0);assert.equal(y.h.layers.size,0);
-        const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');assert.match(html,/window\.firebaseReady\s*=\s*true;\s*window\.OperationalAssetConditions\?\.sync\(\)/);
+        const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');require('./phase134-release-integrity.cjs').verifyFirebaseReady(html);
     });
     await reconnect('B network failure increments once and persists explicit lastError',async()=>{
         const y=setup();await y.a.loadLocal();const d=y.draft('ROAD_BTR_063','TREE FALL');await y.a.saveDraft(d);

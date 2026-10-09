@@ -1,0 +1,86 @@
+[
+  {
+    "before": "      const {\n\n        initializeFirestore,\n\n        getFirestore,\n\n        collection,\n\n        query,\n\n        where,\n\n        orderBy,\n\n        onSnapshot,",
+    "after": "      const {\n\n        initializeFirestore,\n\n        getFirestore,\n\n        collection,\n\n        query,\n\n        where,\n\n        orderBy,\n\n        limit,\n\n        onSnapshot,"
+  },
+  {
+    "before": "      window.fb = {\n\n        collection,\n\n        where,\n\n        query,\n\n        orderBy,\n\n        onSnapshot,",
+    "after": "      window.fb = {\n\n        collection,\n\n        where,\n\n        query,\n\n        orderBy,\n\n        limit,\n\n        onSnapshot,"
+  },
+  {
+    "before": "window.loadLatestPatrolPointFast = function(sessionId, staff){\n\n  const run = async function(){\n\n    try {\n\n      sessionId =\n        String(sessionId || \"\").trim();\n\n      if(\n        !sessionId ||\n        !staff ||\n        !window.fb ||\n        !window.db\n      ){\n        return;\n      }\n\n      const {\n        collection: collFb,\n        query: queryFb,\n        orderBy: orderByFb,\n        limit: limitFb,\n        getDocs: getDocsFb\n      } = window.fb;\n\n      if(\n        typeof collFb !== \"function\" ||\n        typeof queryFb !== \"function\" ||\n        typeof orderByFb !== \"function\" ||\n        typeof getDocsFb !== \"function\"\n      ){\n        console.warn(\n          \"⚠ Latest patrol fast path unavailable:\",\n          sessionId\n        );\n        return;\n      }\n\n      const pointsCollection =\n        collFb(\n          window.db,\n          \"patrol_tracks\",\n          sessionId,\n          \"points\"\n        );\n\n      const queryParts = [\n        orderByFb(\"time\", \"desc\")\n      ];\n\n      // Use limit(1) when the Firebase wrapper exposes it.\n      // If unavailable, the query still works with orderBy()\n      // and the first document is used below.\n      if(typeof limitFb !== \"function\") return;\n      if(typeof limitFb === \"function\"){\n        queryParts.push(limitFb(1));\n      }\n\n      const latestPointQuery =\n        queryFb(\n          pointsCollection,\n          ...queryParts\n        );\n\n      // This is deliberately not awaited by the caller.\n      const pointSnap =\n        await getDocsFb(latestPointQuery);\n\n      if(\n        !pointSnap ||\n        pointSnap.empty ||\n        !pointSnap.docs ||\n        !pointSnap.docs.length\n      ){\n        return;\n      }\n\n      const pointDoc =\n        pointSnap.docs[0];\n\n      const rawPoint =\n        typeof pointDoc.data === \"function\"\n          ? pointDoc.data()\n          : null;\n\n      if(!rawPoint){\n        return;\n      }\n\n      const point = {\n        ...rawPoint,\n\n        id:\n          String(\n            rawPoint.id ||\n            rawPoint.pointId ||\n            pointDoc.id ||\n            \"\"\n          ).trim(),\n\n        sessionId:\n          String(\n            rawPoint.sessionId ||\n            sessionId\n          ).trim()\n      };\n\n      const lat =\n        Number(point.lat);\n\n      const lon =\n        Number(point.lon);\n\n      if(\n        !Number.isFinite(lat) ||\n        !Number.isFinite(lon) ||\n        lat === 0 ||\n        lon === 0\n      ){\n        return;\n      }\n\n      // Ensure the existing marker path can find this point\n      // through its authoritative cache helper.\n      const current = window.visibleStaffCache?.[cleanName(staff.cleanName || staff.name || '')];\n      if (current?.dutyActive !== true || String(current.sessionId || '').trim() !== sessionId ||\n          String(point.sessionId || '').trim() !== sessionId) return;\n      window.sessionPointCache ??=\n        Object.create(null);\n\n      window.sessionPointCache[sessionId] ??=\n        Object.create(null);\n\n      const existing = Object.prototype.hasOwnProperty.call(window.sessionPointCache[sessionId], point.id);\n      const cached = window.sessionPointCache[sessionId][point.id];\n      if (!cached || getPointTime(point) >= getPointTime(cached)) {\n        window.sessionPointCache[sessionId][point.id] = point;\n        window.StaffRendering?.changed(sessionId, point.id, point, existing, false);\n      }\n\n      window.latestPatrolPointByStaff ??=\n        Object.create(null);\n\n      const staffName =\n        cleanName(\n          staff.cleanName ||\n          staff.name ||\n          \"\"\n        );\n\n      if(!staffName){\n        return;\n      }\n\n      // Render immediately using the existing authorization\n      // and marker-rendering function.\n      if(\n        typeof window.updateLiveMarkerFromPatrolPoint ===\n        \"function\"\n      ){\n        window.updateLiveMarkerFromPatrolPoint(\n          current,\n          point,\n          sessionId\n        );\n      }\n\n      console.log(\n        \"⚡ LATEST PATROL POINT FAST RENDERED:\",\n        {\n          sessionId,\n          staffName,\n          pointId: point.id,\n          lat,\n          lon\n        }\n      );\n\n    } catch(error){\n\n      // Fast-path failure must never interrupt the normal\n      // central listener or the live_staff processing flow.\n      console.warn(\n        \"⚠ Latest patrol point fast path failed:\",\n        sessionId,\n        error\n      );\n\n    }\n\n    finally { window.StaffRendering?.finishFast(sessionId, staff); }\n  };\n\n  // Start independently. The caller never waits for this.\n  Promise.resolve()\n    .then(run)\n    .catch(error => {\n      console.warn(\n        \"⚠ Latest patrol fast path unhandled failure:\",\n        sessionId,\n        error\n      );\n    });\n\n  return true;\n};",
+    "after": "window.loadLatestPatrolPointFast = function(sessionId, staff){\n  const run = async function(){\n    const diagnostic = window.StaffStartupDiagnostics;\n    try {\n      sessionId = String(sessionId || \"\").trim();\n      const {collection, query, orderBy, limit, getDocs} = window.fb || {};\n      if (!sessionId || !staff || !window.db ||\n          [collection, query, orderBy, limit, getDocs].some(fn => typeof fn !== \"function\")) return;\n      const started = diagnostic?.now();\n      const pointSnap = await getDocs(query(\n        collection(window.db, \"patrol_tracks\", sessionId, \"points\"), orderBy(\"time\", \"desc\"), limit(8)\n      ));\n      diagnostic?.snapshot(sessionId, pointSnap, 'fast');\n      diagnostic?.record(sessionId, {fastQueryWaitMs: diagnostic.now() - started});\n      const current = window.visibleStaffCache?.[cleanName(staff.cleanName || staff.name || '')];\n      if (current?.dutyActive !== true || String(current.sessionId || '').trim() !== sessionId ||\n          !window.patrolSessionListeners[sessionId]) return;\n      const indexedAt = diagnostic?.now();\n      const point = window.StaffRendering.selectFast(pointSnap?.docs || [], sessionId);\n      diagnostic?.record(sessionId, {fastIndexMs: diagnostic.now() - indexedAt, fastValidPoint: !!point});\n      // Invalid recent fixes never authorize a fabricated position. Full history remains the fallback.\n      if (!point) return;\n      window.sessionPointCache ??= Object.create(null);\n      const cache = window.sessionPointCache[sessionId] ??= Object.create(null);\n      const existed = Object.prototype.hasOwnProperty.call(cache, point.id), cached = cache[point.id];\n      if (!cached || getPointTime(point) >= getPointTime(cached)) {\n        cache[point.id] = point;\n        window.StaffRendering.changed(sessionId, point.id, point, existed, false);\n      }\n      window.updateLiveMarkerFromPatrolPoint(current, point, sessionId);\n    } catch(error) {\n      window.StaffStartupDiagnostics?.record(sessionId, {fastError: String(error.code || error.message)});\n      console.warn(\"⚠ Latest patrol point fast path failed; full history remains active:\", sessionId, error);\n    } finally { window.StaffRendering?.finishFast(sessionId, staff); }\n  };\n  Promise.resolve().then(run);\n  return true;\n};"
+  },
+  {
+    "before": "      const unsubscribe = onSnapFb(\n        pointsRef,",
+    "after": "      window.StaffRendering?.beginHistory(sessionId);\n      window.StaffStartupDiagnostics?.mark('T6');\n      window.StaffStartupDiagnostics?.record(sessionId, {historyAttachedAt: window.StaffStartupDiagnostics.now()});\n      const unsubscribe = onSnapFb(\n        pointsRef,"
+  },
+  {
+    "before": "            window.processPatrolSessionSnapshot(sessionId, pointSnap, ownerStaff);",
+    "after": "            const diagnostic = window.StaffStartupDiagnostics;\n            diagnostic?.snapshot(sessionId, pointSnap, 'history');\n            const began = diagnostic?.now();\n            window.processPatrolSessionSnapshot(sessionId, pointSnap, ownerStaff);\n            diagnostic?.record(sessionId, {historyProcessingMs: diagnostic.now() - began});\n            window.StaffRendering?.completeHistory(sessionId);"
+  },
+  {
+    "before": "  window.staffUnsubscribe = onSnapshot(\n    liveRef,",
+    "after": "  if (window.userProfile) window.StaffStartupDiagnostics?.mark('T2');\n  window.StaffStartupDiagnostics?.mark('T3');\n  window.staffUnsubscribe = onSnapshot(\n    liveRef,"
+  },
+  {
+    "before": "    async function processLiveStaff(snapshot){\n      try {",
+    "after": "    async function processLiveStaff(snapshot){\n      window.StaffStartupDiagnostics?.mark('T4');\n      try {"
+  },
+  {
+    "before": "window.StaffRendering?.syncVisible();",
+    "after": "window.StaffStartupDiagnostics?.mark('T5');\nwindow.StaffRendering?.syncVisible();"
+  },
+  {
+    "before": "  // History and analytics retain their original synchronous completion.",
+    "after": "  window.StaffStartupDiagnostics?.record(sessionId, {historyIndexAndMarkerAt: window.StaffStartupDiagnostics.now()});\n  // History and analytics retain their original synchronous completion."
+  },
+  {
+    "before": "esriSat.addTo(map);",
+    "after": "window.StaffStartupDiagnostics?.mark('T1');\nesriSat.addTo(map);"
+  },
+  {
+    "before": "        const sessionId =\n            String(\n                staff.sessionId || \"\"\n            )\n            .trim();\n\n\n        if(\n            !sessionId\n        ){\n\n            console.log(\n                \"⚠ No active session for:\",\n                name\n            );\n\n            return;\n        }\n\n\n        ",
+    "after": "        const sessionId =\n            String(\n                staff.sessionId || \"\"\n            )\n            .trim();\n\n\n        if(\n            !sessionId\n        ){\n\n            console.log(\n                \"⚠ No active session for:\",\n                name\n            );\n\n            return;\n        }\n\n\n        if (window.StaffRendering?.historyPending(sessionId)) return null;\n\n        "
+  },
+  {
+    "before": "      window.firebaseReady =\n        true;",
+    "after": "      window.firebaseReady =\n        true;\n      // Start authorized staff independently of profile-directory/GIS bootstrap.\n      window.StaffRendering?.start();"
+  },
+  {
+    "before": "      window.StaffRendering?.beginHistory(sessionId);",
+    "after": "      if (window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')]?.dutyActive === true)\n        window.StaffStartupDiagnostics?.mark('T5');\n      window.StaffRendering?.beginHistory(sessionId);"
+  },
+  {
+    "before": "diagnostic?.record(sessionId, {historyProcessingMs: diagnostic.now() - began});",
+    "after": "diagnostic?.processing(sessionId, {historyProcessingMs: diagnostic.now() - began});"
+  },
+  {
+    "before": "  const changes =\n    pointSnap.docChanges();",
+    "after": "  const changes =\n    pointSnap.docChanges();\n  const indexBegan = window.StaffStartupDiagnostics?.now();\n  window.StaffStartupDiagnostics?.processing(sessionId, {historyChangedDocuments: changes.length});"
+  },
+  {
+    "before": "  if (window.StaffRendering) {\n    const authorized =",
+    "after": "  window.StaffStartupDiagnostics?.processing(sessionId, {historyIndexMs: window.StaffStartupDiagnostics.now() - indexBegan});\n  if (window.StaffRendering) {\n    const authorized ="
+  },
+  {
+    "before": "    window.processPatrolAnalyticsSnapshot(\n      newPoints,\n      staffMember,\n      sessionId\n    );",
+    "after": "    const analyticsBegan = window.StaffStartupDiagnostics?.now();\n    window.processPatrolAnalyticsSnapshot(\n      newPoints,\n      staffMember,\n      sessionId\n    );\n    window.StaffStartupDiagnostics?.processing(sessionId, {analyticsMs: window.StaffStartupDiagnostics.now() - analyticsBegan});"
+  },
+  {
+    "before": "        cache[point.id] = point;\n        window.StaffRendering.changed",
+    "after": "        cache[point.id] = point;\n        if (!existed) window.StaffRendering.trackFastSeed(sessionId, point.id);\n        window.StaffRendering.changed"
+  },
+  {
+    "before": "        pointsRef,\n        pointSnap => {",
+    "after": "        pointsRef,\n        {includeMetadataChanges: true},\n        pointSnap => {"
+  },
+  {
+    "before": "            window.processPatrolSessionSnapshot(sessionId, pointSnap, ownerStaff);",
+    "after": "            window.StaffRendering?.reconcileFastSeeds(sessionId, pointSnap);\n            window.processPatrolSessionSnapshot(sessionId, pointSnap, ownerStaff);"
+  },
+  {
+    "before": "            window.StaffRendering?.completeHistory(sessionId);",
+    "after": "            window.StaffRendering?.completeHistory(sessionId, pointSnap);"
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "before": "<link rel=\"stylesheet\" href=\"css/staffPopup.css\">",
+    "after": "<link rel=\"stylesheet\" href=\"css/staffPopup.css\">\n<script src=\"js/staffTrackNavigation.js\"></script>\n<link rel=\"stylesheet\" href=\"css/staffTrackNavigation.css\">"
+  },
+  {
+    "before": "        try{\n\n            if(\n                typeof map !== \"undefined\" &&\n                map &&\n                typeof map.fitBounds ===\n                \"function\" &&\n                latLngs.length > 1\n            ){\n\n                const bounds =\n                    L.latLngBounds(\n                        latLngs\n                    );\n\n\n                if(\n                    bounds.isValid()\n                ){\n\n                    map.fitBounds(\n                        bounds,\n                        {\n                            padding:\n                                [\n                                    30,\n                                    30\n                                ],\n\n                            maxZoom:\n                                17\n                        }\n                    );\n\n                }\n\n            }\n\n        }\n        catch(err){\n\n            console.warn(\n                \"⚠ Individual track map fit skipped:\",\n                name,\n                err\n            );\n\n        }\n\n\n        // ====================================================\n        // ✅ FINAL STATUS\n        // ----------------------------------------------------\n        // Individual track is rendered entirely from the\n        // central session cache.\n        //\n        // NO:\n        //     onSnapshot()\n        //     getDocs()\n        //     patrol_tracks query\n        //     trackListeners ownership\n        //\n        // YES:\n        //     visibleStaffCache\n        //     sessionPointCache\n        //     staffTracks UI\n        // ====================================================\n\n",
+    "after": "        polyline.__ggStaffTrackSessionId = sessionId;\n\n"
+  },
+  {
+    "before": "        console.log(\n            \"🟢 INDIVIDUAL TRACK FROM CACHE:\",\n            name,\n            sessionId,\n            points.length,\n            \"points\"\n        );\n\n\n    }\n",
+    "after": "        console.log(\n            \"🟢 INDIVIDUAL TRACK FROM CACHE:\",\n            name,\n            sessionId,\n            points.length,\n            \"points\"\n        );\n\n\n        return polyline;\n    }\n"
+  },
+  {
+    "before": "            const staffMarker = window.staffMarkers?.[s.cleanName];\n            if(staffMarker && staffMarker.__staffTrackClickBound !== true){\n              staffMarker.__staffTrackClickBound = true;\n              staffMarker.on(\"click\", function(){\n                try {\n                  const clickedName = cleanName(s.cleanName || s.name || \"\");\n                  if(!clickedName) return;\n\n                  const currentUserName = cleanName(window.userProfile?.cleanName || window.userProfile?.name || \"\");\n                  if(clickedName === currentUserName) return;\n\n                  if(window.staffTrackState?.bulkEnabled === true) return;\n\n                  const selectedName = cleanName(window.staffTrackState?.selectedStaff || \"\");\n                  if(selectedName === clickedName){\n                    window.clearSelectedStaffTrack?.();\n                    return;\n                  }\n\n                  if(selectedName){\n                    window.clearSelectedStaffTrack?.();\n                  }\n\n                  window.loadIndividualStaffTrack?.(clickedName);\n                } catch(err){\n                  console.error(\"❌ Staff marker track click failed:\", s.cleanName, err);\n                }\n              });\n            }\n\n",
+    "after": "            window.StaffTrackNavigation.bindPopup(window.staffMarkers[s.cleanName], staffDistanceKey);\n\n"
+  },
+  {
+    "before": "                </button>\n              </div>\n            </div>",
+    "after": "                </button>\n                <div class=\"btr-staff-track-actions\">\n                  <button type=\"button\" data-staff-track-action=\"view\">View Track</button>\n                  <button type=\"button\" data-staff-track-action=\"zoom\">Zoom to Track</button>\n                  <span data-staff-track-status role=\"status\" aria-live=\"polite\"></span>\n                </div>\n              </div>\n            </div>"
+  },
+  {
+    "before": "                  zIndexOffset: 3000",
+    "after": "                  zIndexOffset: 3000,\n                  autoPanOnFocus: false"
+  },
+  {
+    "before": "                  <button type=\"button\" data-staff-track-action=\"zoom\">Zoom to Track</button>",
+    "after": "                  <button type=\"button\" data-staff-track-action=\"zoom\">Zoom to Track</button>\n                  <button type=\"button\" data-staff-track-action=\"close\">Close</button>"
+  }
+]

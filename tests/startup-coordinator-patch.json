@@ -1,0 +1,138 @@
+{
+  "index.html": [
+    {
+      "before": "<script src=\"js/firestoreRecovery.js\"></script>",
+      "after": "<script src=\"js/startupCoordinator.js\"></script>\n<script src=\"js/firestoreRecovery.js\"></script>",
+      "count": 1
+    },
+    {
+      "before": "esriSat.addTo(map);",
+      "after": "window.StartupCoordinator?.bindMap(map, esriSat);\nesriSat.addTo(map);",
+      "count": 1
+    },
+    {
+      "before": "    renderFilteredGIS();\n\n\n    centerMap();",
+      "after": "    renderFilteredGIS();\n\n\n    window.StartupCoordinator.centerInitial(() => centerMap());",
+      "count": 1
+    },
+    {
+      "before": "})\n.addTo(window.map);\n\n// ==================================================\n// 🟩 DIVISION LAYER",
+      "after": "})\n.addTo(window.map);\nwindow.StartupCoordinator?.boundaryReady();\n\n// ==================================================\n// 🟩 DIVISION LAYER",
+      "count": 1
+    },
+    {
+      "before": "      \"❌ loadRangeKML Error:\",\n      e\n    );",
+      "after": "      \"❌ loadRangeKML Error:\",\n      e\n    );\n    window.StartupCoordinator?.boundaryFailed();",
+      "count": 1
+    },
+    {
+      "before": "    currentRequiredSessions;\n\n\n// ============================================================",
+      "after": "    currentRequiredSessions;\nwindow.StartupCoordinator?.sessions(currentRequiredSessions.size, snapshot.metadata?.fromCache);\nwindow.StartupCoordinator?.settled(window.StaffRendering.fastPendingCount());\n\n// ============================================================",
+      "count": 1
+    },
+    {
+      "before": "  window.monthlyStatusControl =\n    control;",
+      "after": "  window.monthlyStatusControl =\n    control;\n  window.StartupCoordinator?.attachStates();",
+      "count": 1
+    },
+    {
+      "before": "                            updateMonthlyStatusFromRealtimeAnalytics();",
+      "after": "                            updateMonthlyStatusFromRealtimeAnalytics();\n                        window.StartupCoordinator?.monthly(snapshot.metadata?.fromCache === true ? \"Cached\" : \"Live\");",
+      "count": 1
+    },
+    {
+      "before": "                        \"❌ Monthly analytics realtime listener failed:\",\n                        error\n                    );",
+      "after": "                        \"❌ Monthly analytics realtime listener failed:\",\n                        error\n                    );\n                    window.StartupCoordinator?.monthly(\"Unavailable\", error);",
+      "count": 1
+    },
+    {
+      "before": "                    renderMonthlyStatusCard(\n                        cached,\n                        level\n                    );",
+      "after": "                    renderMonthlyStatusCard(\n                        cached,\n                        level\n                    );\n                    window.StartupCoordinator?.monthly(\"Cached\");",
+      "count": 1
+    },
+    {
+      "before": "                renderMonthlyStatusCard(\n                    cached,\n                    level\n                );",
+      "after": "                renderMonthlyStatusCard(\n                    cached,\n                    level\n                );\n                window.StartupCoordinator?.monthly(\"Cached\");",
+      "count": 1
+    },
+    {
+      "before": "liveStaff.toLocaleString();",
+      "after": "window.StartupCoordinator?.staffReady !== false ? liveStaff.toLocaleString() : \"Loading…\";",
+      "count": 4
+    },
+    {
+      "before": "<span id=\"msTotalGrids\">0</span>",
+      "after": "<span id=\"msTotalGrids\">Loading…</span>",
+      "count": 1
+    },
+    {
+      "before": "<span id=\"msCells\">0</span>",
+      "after": "<span id=\"msCells\">Loading…</span>",
+      "count": 1
+    },
+    {
+      "before": "<span id=\"msArea\">0 ha</span>",
+      "after": "<span id=\"msArea\">Loading…</span>",
+      "count": 1
+    },
+    {
+      "before": "<span id=\"msTotalArea\">0 ha</span>",
+      "after": "<span id=\"msTotalArea\">Loading…</span>",
+      "count": 1
+    },
+    {
+      "before": "<span id=\"msCompartments\">0</span>",
+      "after": "<span id=\"msCompartments\">Loading…</span>",
+      "count": 1
+    },
+    {
+      "before": "<span id=\"msDistance\">0 km</span>",
+      "after": "<span id=\"msDistance\">Loading…</span>",
+      "count": 1
+    },
+    {
+      "before": "<span id=\"msCoverage\">0 %</span>",
+      "after": "<span id=\"msCoverage\">Loading…</span>",
+      "count": 1
+    },
+    {
+      "before": "          >\n            0\n          </span>",
+      "after": "          >\n            Loading…\n          </span>",
+      "count": 2
+    }
+  ],
+  "js/staffRendering.js": [
+    {
+      "before": "        drainFast();\n    }\n    function beginHistory",
+      "after": "        drainFast();\n        w.StartupCoordinator?.settled(fastPending.size);\n    }\n    function beginHistory",
+      "count": 1
+    },
+    {
+      "before": "        mark('T8'); processing",
+      "after": "        w.StartupCoordinator?.markerRendered(marker);\n        mark('T8'); processing",
+      "count": 1
+    },
+    {
+      "before": "                marker.__staffLocation = {key, version, html: location.innerHTML};",
+      "after": "                marker.__staffLocation = {key, version, html: location.innerHTML};\n                w.StartupCoordinator?.mark(\"dynamicPopupEnrichmentCompleted\");",
+      "count": 1
+    },
+    {
+      "before": "            marker.on('popupopen', () => { stop(); refresh(marker);",
+      "after": "            marker.on('popupopen', () => { w.StartupCoordinator?.mark('firstPopupOpened'); stop(); refresh(marker);",
+      "count": 1
+    },
+    {
+      "before": "        isFastCurrent: (id, staff) =>",
+      "after": "        fastPendingCount: () => fastPending.size,\n        isFastCurrent: (id, staff) =>",
+      "count": 1
+    }
+  ],
+  "js/firestoreRecovery.js": [
+    {
+      "before": "const diagnostic=(state,code)=>{w.firestoreServiceState={state,code:code||null};",
+      "after": "const diagnostic=(state,code)=>{w.firestoreServiceState={state,code:code||null};w.StartupCoordinator?.paint();",
+      "count": 1
+    }
+  ]
+}

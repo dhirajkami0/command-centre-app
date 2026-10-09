@@ -1,0 +1,62 @@
+[
+  {
+    "before": "        if(\n\n          typeof startSightingsRealtime ===\n            \"function\"\n\n        ){\n",
+    "after": "        if(\n\n          typeof startSightingsRealtime ===\n            \"function\" && elephantMarkerLayerEnabled()\n\n        ){\n"
+  },
+  {
+    "before": "    var predictionLayer = L.layerGroup().addTo(map);\n    var incidentLayer = L.layerGroup();\n\n    var elephantLayer = L.layerGroup().addTo(map);\n    var staffLayer = L.layerGroup().addTo(map);\n\n    var patrolTrackLayer = L.layerGroup().addTo(map);",
+    "after": "    var predictionLayer = L.layerGroup().addTo(map);\n    var incidentLayer = L.layerGroup();\n\nvar elephantLayer = L.layerGroup();\n    var staffLayer = L.layerGroup().addTo(map);\n\n    var patrolTrackLayer = L.layerGroup().addTo(map);"
+  },
+  {
+    "before": "// ============================================================\n\nwindow.sightingsUnsubscribe ??= null;\n\nwindow.sightingsRealtimeActive ??= false;\n",
+    "after": "// ============================================================\n\nwindow.sightingsUnsubscribe ??= null;\nwindow.elephantMarkerGeneration ??= 0;\n\nfunction elephantMarkerLayerEnabled(){\n    return typeof elephantLayer !== \"undefined\" &&\n        typeof map !== \"undefined\" && map.hasLayer(elephantLayer);\n}\n\nfunction stopSightingsRealtime(){\n    window.elephantMarkerGeneration++;\n    const unsubscribe = window.sightingsUnsubscribe;\n    window.sightingsUnsubscribe = null;\n    window.sightingsRealtimeActive = false;\n    if(typeof unsubscribe === \"function\") unsubscribe();\n}\n\nwindow.sightingsRealtimeActive ??= false;\n"
+  },
+  {
+    "before": "async function loadSightings(\n  realtimeData = null\n){\n\n// =====================================================\n// INIT",
+    "after": "async function loadSightings(\n  realtimeData = null\n){\nif(!elephantMarkerLayerEnabled()) return;\nconst markerGeneration = window.elephantMarkerGeneration;\n\n// =====================================================\n// INIT"
+  },
+  {
+    "before": "            cachedSightings =\n                await loadElephantSightingsFromIDB();\n\n        }\n\n        else{",
+    "after": "            cachedSightings =\n                await loadElephantSightingsFromIDB();\n\n            if(!elephantMarkerLayerEnabled() || markerGeneration !== window.elephantMarkerGeneration) return;\n\n        }\n\n        else{"
+  },
+  {
+    "before": "\nasync function startSightingsRealtime(){\n\n    try{\n\n        // ========================================================",
+    "after": "\nasync function startSightingsRealtime(){\n\n    if(!elephantMarkerLayerEnabled()) return false;\n    const markerGeneration = window.elephantMarkerGeneration;\n    const isCurrent = () => elephantMarkerLayerEnabled() &&\n        markerGeneration === window.elephantMarkerGeneration;\n\n    try{\n\n        // ========================================================"
+  },
+  {
+    "before": "\n        }\n\n\n        // ========================================================\n        // 🔒 PREVENT DUPLICATE LISTENER",
+    "after": "\n        }\n\n        let initialServerSnapshot = true;\n\n\n        // ========================================================\n        // 🔒 PREVENT DUPLICATE LISTENER"
+  },
+  {
+    "before": "\n                async function(snapshot){\n\n                    try{\n\n                        // =================================================",
+    "after": "\n                async function(snapshot){\n\n                    if(!isCurrent()) return;\n\n                    try{\n\n                        // ================================================="
+  },
+  {
+    "before": "                        const removedKeys =\n                            [];\n\n\n                        // =================================================\n                        // 🔄 PROCESS FIRESTORE DELTA",
+    "after": "                        const removedKeys =\n                            [];\n\n                        // Reconcile deletions missed while this layer was OFF.\n                        if(initialServerSnapshot && !snapshot.metadata?.fromCache && Array.isArray(snapshot.docs)){\n                            initialServerSnapshot = false;\n                            const keys = new Set(snapshot.docs.map(doc => String(window.getSightingCacheKey(doc))));\n                            for(const key of Object.keys(window.sightingsCache || {})){\n                                if(keys.has(key)) continue;\n                                delete window.sightingsCache[key];\n                                window.removeSightingMarker?.(key);\n                                idbChanges.push({type: \"removed\", key, sighting: null});\n                            }\n                        }\n\n\n                        // =================================================\n                        // 🔄 PROCESS FIRESTORE DELTA"
+  },
+  {
+    "before": "                        // ⚡ PROCESS ONLY CHANGED MARKERS\n                        // =================================================\n\n                        if(\n\n                            changedData.length > 0",
+    "after": "                        // ⚡ PROCESS ONLY CHANGED MARKERS\n                        // =================================================\n\n                        if(!isCurrent()) return;\n                        if(\n\n                            changedData.length > 0"
+  },
+  {
+    "before": "                        // STATE\n                        // =================================================\n\n                        window.sightingsRealtimeActive =\n                            true;\n",
+    "after": "                        // STATE\n                        // =================================================\n\n                        if(!isCurrent()) return;\n                        window.sightingsRealtimeActive =\n                            true;\n"
+  },
+  {
+    "before": "\n                function(error){\n\n                    console.error(\n\n                        \"❌ Elephant sightings realtime listener error:\",",
+    "after": "\n                function(error){\n\n                    if(!isCurrent()) return;\n\n                    console.error(\n\n                        \"❌ Elephant sightings realtime listener error:\","
+  },
+  {
+    "before": "    );\n}\nelse if(\n  typeof loadSightings === \"function\"\n){\n    console.log(\n        \"⚠ Elephant sightings realtime not active — fallback load\"",
+    "after": "    );\n}\nelse if(\n  typeof loadSightings === \"function\" && elephantMarkerLayerEnabled()\n){\n    console.log(\n        \"⚠ Elephant sightings realtime not active — fallback load\""
+  },
+  {
+    "before": "                }\n\n                // 👮 STAFF\n                if (layerName === \"👮 Staff\") {\n                    typeof loadStaff === 'function' && loadStaff();\n                    return;",
+    "after": "                }\n\n                // 👮 STAFF\n                if (layerName === \"🐘 Elephants\") {\n                    await startSightingsRealtime();\n                    return;\n                }\n\n                if (layerName === \"👮 Staff\") {\n                    typeof loadStaff === 'function' && loadStaff();\n                    return;"
+  },
+  {
+    "before": "                }\n\n                // 🛣 STAFF TRACKS OFF\n                if (layerName === \"🛣 Staff Tracks\") {\n                    const state = window.staffTrackState;\n                    if (state) {",
+    "after": "                }\n\n                // 🛣 STAFF TRACKS OFF\n                if (layerName === \"🐘 Elephants\") {\n                    stopSightingsRealtime();\n                    return;\n                }\n\n                if (layerName === \"🛣 Staff Tracks\") {\n                    const state = window.staffTrackState;\n                    if (state) {"
+  }
+]

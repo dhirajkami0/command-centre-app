@@ -1,0 +1,1006 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Right control rail — isolated fixture</title>
+<link rel="stylesheet" href="../css/leaflet.css"><style>html,body{margin:0;height:100%;background:#101820}#map{position:relative;width:100%;height:100%;background:#101820}#tacticalCompass{
+
+  position:absolute;
+
+  /* ========================================================
+     🔥 FLOATING TACTICAL POSITION
+     SAFE FROM:
+     - zoom controls
+     - layer buttons
+     - hidden panels
+  ======================================================== */
+
+  top:calc(12px + var(--sat));
+
+  right:72px;
+
+  width:108px;
+  height:108px;
+
+  z-index:2200;
+
+  transform:scale(0.92);
+
+  border-radius:50%;
+
+  background:
+    radial-gradient(
+      circle at center,
+      rgba(12,16,12,0.96),
+      rgba(0,0,0,0.97)
+    );
+
+  border:
+    1px solid rgba(0,255,120,0.10);
+
+  box-shadow:
+    0 0 16px rgba(0,255,120,0.06),
+    inset 0 0 14px rgba(0,255,120,0.04);
+
+
+  overflow:hidden;
+
+  opacity:0.94;
+
+  pointer-events:none;
+}
+
+/* ============================================================
+🧭 ROTATING RING
+NORTH REMAINS ABSOLUTE
+============================================================ */
+
+#compassRing{
+
+  position:absolute;
+
+  inset:0;
+
+  border-radius:50%;
+
+  will-change:transform;
+
+  transition:
+    transform 0.08s linear;
+}
+
+/* ============================================================
+🧭 CARDINALS
+============================================================ */
+
+#compassNorth,
+.cardinal{
+
+  position:absolute;
+
+  font-weight:700;
+
+  letter-spacing:0.5px;
+
+  user-select:none;
+
+  text-shadow:
+    0 0 6px rgba(0,0,0,0.9);
+}
+
+/* ============================================================
+🔴 TRUE NORTH
+============================================================ */
+
+#compassNorth{
+
+  top:7px;
+
+  left:50%;
+
+  transform:
+    translateX(-50%);
+
+  color:#ff5c5c;
+
+  font-size:11px;
+
+  text-shadow:
+    0 0 10px rgba(255,80,80,0.35);
+}
+
+/* ============================================================
+🧭 OTHER CARDINALS
+============================================================ */
+
+.cardinal{
+
+  color:#cfeecf;
+
+  font-size:9px;
+
+  opacity:0.92;
+}
+
+.east{
+
+  right:9px;
+
+  top:50%;
+
+  transform:
+    translateY(-50%);
+}
+
+.south{
+
+  bottom:7px;
+
+  left:50%;
+
+  transform:
+    translateX(-50%);
+}
+
+.west{
+
+  left:9px;
+
+  top:50%;
+
+  transform:
+    translateY(-50%);
+}
+
+/* ============================================================
+🧭 CENTER LOCK
+============================================================ */
+
+#centerDot{
+
+  position:absolute;
+
+  top:50%;
+  left:50%;
+
+  width:9px;
+  height:9px;
+
+  transform:
+    translate(-50%,-50%);
+
+  border-radius:50%;
+
+  background:#00ff88;
+
+  box-shadow:
+    0 0 6px #00ff88,
+    0 0 16px rgba(0,255,136,0.22);
+
+  z-index:20;
+}
+
+/* ============================================================
+🧭 MOVEMENT VECTOR
+============================================================ */
+
+#bearingLine{
+
+  position:absolute;
+
+  top:50%;
+  left:50%;
+
+  width:2px;
+
+  height:38px;
+
+  transform:
+    translateX(-50%);
+
+  transform-origin:
+    bottom center;
+
+  border-radius:4px;
+
+  background:
+    linear-gradient(
+      to top,
+      rgba(0,255,120,0),
+      rgba(0,255,120,0.92)
+    );
+}
+
+/* ============================================================
+🌀 VEHICLE CURVE ARC
+============================================================ */
+
+#curveArc{
+
+  position:absolute;
+
+  width:72px;
+  height:72px;
+
+  top:50%;
+  left:50%;
+
+  transform:
+    translate(-50%,-50%);
+
+  border-radius:50%;
+
+  border:
+    2px solid transparent;
+
+  border-top:
+    2px solid rgba(255,180,0,0.92);
+
+  opacity:0;
+
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+
+/* ============================================================
+📊 INFO PANEL
+============================================================ */
+
+#compassInfo{
+
+  position:absolute;
+
+  bottom:7px;
+
+  width:100%;
+
+  text-align:center;
+
+  line-height:1.1;
+
+  user-select:none;
+
+  text-shadow:
+    0 1px 4px rgba(0,0,0,0.95);
+}
+
+/* ============================================================
+🧭 HEADING TEXT
+============================================================ */
+
+#headingText{
+
+  color:#eaffea;
+
+  font-size:12px;
+
+  font-weight:700;
+
+  letter-spacing:0.4px;
+}
+
+/* ============================================================
+📡 GPS QUALITY
+============================================================ */
+
+#gpsQuality{
+
+  margin-top:2px;
+
+  font-size:7px;
+
+  font-weight:600;
+
+  letter-spacing:0.5px;
+
+  opacity:0.95;
+}
+
+
+    /* =========================================
+👁 GIS BUTTON WITH EYE
+========================================= */
+
+.gis-btn-wrap{
+
+  display:flex;
+
+  align-items:center;
+
+  gap:4px;
+
+  margin:2px;
+}
+
+/* =========================================
+🔘 MAIN GIS BUTTON
+========================================= */
+
+.gis-filter-btn{
+
+  flex:1;
+}
+
+/* =========================================
+👁 EYE BUTTON
+========================================= */
+
+.gis-eye-btn{
+
+  width:34px;
+
+  height:34px;
+
+  border:none;
+
+  border-radius:8px;
+
+  background:#1f1f1f;
+
+  color:white;
+
+  cursor:pointer;
+
+  font-size:16px;
+
+  transition:0.2s;
+}
+
+.gis-eye-btn:hover{
+
+  background:#333;
+}
+
+.gis-eye-btn:active{
+
+  transform:scale(0.92);
+}
+
+/* ===================================== */
+/* 🛰 PLANET POPUP */
+/* ===================================== */
+
+.planet-popup{
+
+  z-index:999999 !important;
+}
+
+.planet-popup .leaflet-popup-content-wrapper {
+
+  background:transparent !important;
+
+  box-shadow:none !important;
+
+  padding:0 !important;
+
+  overflow:visible !important;
+
+  border-radius:16px !important;
+}
+
+.planet-popup .leaflet-popup-content {
+
+  margin:0 !important;
+
+  width:auto !important;
+}
+
+.planet-popup .leaflet-popup-tip {
+
+  background:white !important;
+
+  box-shadow:
+    0 2px 8px rgba(0,0,0,0.25);
+}
+
+/* ===================================== */
+/* 🛰 LOADING POPUP */
+/* ===================================== */
+
+.planet-loading-popup{
+
+  z-index:999999 !important;
+}
+
+.planet-loading-popup
+.leaflet-popup-content-wrapper {
+
+  background:white !important;
+
+  border-radius:14px !important;
+
+  box-shadow:
+    0 6px 22px rgba(0,0,0,0.35);
+
+  padding:0 !important;
+}
+
+.planet-loading-popup
+.leaflet-popup-content {
+
+  margin:0 !important;
+}
+
+.planet-loading-popup
+.leaflet-popup-tip {
+
+  background:white !important;
+}
+
+/* ===================================== */
+/* 🛰 FORCE POPUP ABOVE ENTERPRISE UI */
+/* ===================================== */
+
+.leaflet-popup-pane{
+
+  z-index:999999 !important;
+}
+
+.leaflet-pane{
+
+  z-index:auto;
+}
+
+/* ===================================== */
+/* 🛰 SMOOTH IMAGE */
+/* ===================================== */
+
+.planet-popup img{
+
+  display:block;
+
+  width:100%;
+
+  transition:0.3s ease;
+
+  background:#ddd;
+}
+
+/* ===================================== */
+/* 🛰 MOBILE SAFE */
+/* ===================================== */
+
+@media(max-width:768px){
+
+  .planet-popup .leaflet-popup-content{
+
+    width:240px !important;
+  }
+}
+
+/* ===================================== */
+/* 📊 MONTHLY STATUS CARD
+/* ===================================== */
+
+#monthlyStatusCard {
+
+  width: 200px;
+
+  background:
+    rgba(
+      15,
+      20,
+      25,
+      0.92
+    );
+
+  color: white;
+
+  border-radius: 10px;
+
+  padding: 8px;
+
+  box-shadow:
+    0 4px 18px
+    rgba(
+      0,
+      0,
+      0,
+      0.35
+    );
+
+  backdrop-filter:
+    blur(8px);
+
+  font-size: 12px;
+
+  margin-bottom: 8px;
+
+  margin-right: 6px;
+
+  overflow: hidden;
+
+  transition:
+    width 0.25s ease,
+    padding 0.25s ease;
+}
+
+/* ===================================== */
+/* 📊 HEADER
+/* ===================================== */
+
+#monthlyStatusHeader {
+
+  position: relative;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+}
+
+#monthlyStatusToggle {
+
+  position: absolute;
+
+  left: 0;
+
+  top: 0;
+
+  cursor: pointer;
+
+  color: #4fd1ff;
+
+  font-size: 13px;
+
+  padding: 2px 4px;
+
+  user-select: none;
+}
+
+#monthlyStatusToggle:hover {
+
+  color: white;
+}
+
+#monthlyStatusTitle {
+
+  text-align: center;
+
+  font-weight: 700;
+
+  color: #4fd1ff;
+
+  margin-bottom: 6px;
+
+  padding-bottom: 5px;
+
+  border-bottom:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.15
+    );
+
+  font-size: 12px;
+
+  width: 100%;
+}
+
+/* ===================================== */
+/* 📊 BODY
+/* ===================================== */
+
+#monthlyStatusBody {
+
+  display: block;
+}
+
+/* ===================================== */
+/* 📊 ROWS
+/* ===================================== */
+
+.monthlyStatusRow {
+
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin: 5px 0;
+
+  font-size: 14px;
+}
+
+.monthlyStatusRow span:last-child {
+
+  font-weight: bold;
+
+  color: #ffe97a;
+
+  font-size: 15px;
+}
+
+/* ===================================== */
+/* 📊 COLLAPSED MODE
+/* ===================================== */
+
+#monthlyStatusCard.collapsed {
+
+  width: 95px;
+
+  padding: 6px;
+}
+
+#monthlyStatusCard.collapsed
+#monthlyStatusBody {
+
+  display: none;
+}
+
+#monthlyStatusCard.collapsed
+#monthlyStatusTitle {
+
+  border-bottom: none;
+
+  margin-bottom: 0;
+
+  padding-bottom: 0;
+
+  font-size: 11px;
+}
+
+/* ===================================== */
+/* 📱 MOBILE
+/* ===================================== */
+
+@media (max-width:768px) {
+
+  #monthlyStatusCard {
+
+    width: 145px;
+
+    font-size: 10px;
+
+    padding: 6px;
+
+    margin-bottom: 4px;
+
+    margin-right: 2px;
+  }
+
+  #monthlyStatusTitle {
+
+    font-size: 10px;
+  }
+
+  .monthlyStatusRow {
+
+    margin: 2px 0;
+
+    font-size: 12px;
+  }
+
+  .monthlyStatusRow span:last-child {
+
+    font-size: 13px;
+  }
+
+  #monthlyStatusCard.collapsed {
+
+    width: 85px;
+  }
+
+  #monthlyStatusToggle {
+
+    font-size: 11px;
+  }
+}
+</style>
+<link rel="stylesheet" href="../css/mapControlRail.css"></head><body><div id="map"></div><div id="tacticalCompass">
+
+  <div id="compassRing">
+
+    <div id="compassNorth">N</div>
+
+    <div class="cardinal east">E</div>
+    <div class="cardinal south">S</div>
+    <div class="cardinal west">W</div>
+
+    <div id="bearingLine"></div>
+
+    <div id="centerDot"></div>
+
+    <div id="curveArc"></div>
+
+  </div>
+
+  <div id="compassInfo">
+
+    <div id="headingText">
+      N 0°
+    </div>
+
+
+    <div id="gpsQuality">
+      GPS HIGH
+    </div>
+
+  </div>
+
+</div>
+
+<button id="gg-offence-main-button" onclick="this.dataset.invocations=String(Number(this.dataset.invocations||0)+1)"><span>🚨</span><span>OFFENCE</span></button>
+<script src="../js/leaflet.js"></script><script>
+var map=L.map('map',{zoomControl:false,zoomAnimation:false,fadeAnimation:false}).setView([26.55,89.53],12);L.control.zoom({position:'topright'}).addTo(map);
+var overlays={};for(var i=0;i<42;i++)overlays['Fixture overlay '+String(i+1).padStart(2,'0')]=L.layerGroup();
+window.layerControl=L.control.layers({'Base map':L.layerGroup()},overlays,{collapsed:true}).addTo(map);
+window.userProfile={role:'STAFF'};
+function addMonthlyStatusCard() {
+
+  // =========================================================
+  // DO NOT CREATE CARD FOR VILLAGER
+  // =========================================================
+
+  const role =
+    String(
+      window.userProfile?.role || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  if (role === "VILLAGER") {
+
+    return;
+
+  }
+
+  const control =
+    L.control({
+      position: "bottomright"
+    });
+
+  control.onAdd = function () {
+
+    const div =
+      L.DomUtil.create(
+        "div",
+        "leaflet-control"
+      );
+
+    div.id =
+      "monthlyStatusCard";
+
+    div.innerHTML = `
+
+      <div id="monthlyStatusHeader">
+
+        <span
+          id="monthlyStatusToggle"
+          onclick="toggleMonthlyStatusCard()"
+          title="Collapse / Expand"
+        >
+
+          <i
+            id="monthlyStatusIcon"
+            class="fa-solid fa-chevron-down"
+          ></i>
+
+        </span>
+
+        <span id="monthlyStatusTitle">
+          BTR MONTHLY STATUS
+        </span>
+
+      </div>
+
+      <div id="monthlyStatusBody">
+
+        <div class="monthlyStatusRow">
+
+          <span>
+            Live Duty Team
+          </span>
+
+          <span
+            id="msLiveStaff"
+            onclick="
+              if(typeof showMonthlyLiveStaff==='function'){
+                showMonthlyLiveStaff();
+              }
+            "
+            title="View Live Duty Team"
+            style="
+              cursor:pointer;
+              text-decoration:underline;
+              color:#7fdfff;
+              font-weight:700;
+            "
+          >
+            0
+          </span>
+
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Total Grids</span>
+          <span id="msTotalGrids">0</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Grids Visited</span>
+          <span id="msCells">0</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Patrolled Area</span>
+          <span id="msArea">0 ha</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Total Area</span>
+          <span id="msTotalArea">0 ha</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Compartments</span>
+          <span id="msCompartments">0</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+
+          <span id="msSessionsLabel">
+            Patrol Activity
+          </span>
+
+          <span
+            id="msSessions"
+            onclick="
+              if(typeof showCompartmentVisitBreakdown==='function'){
+                showCompartmentVisitBreakdown();
+              }
+            "
+            title="View Compartment Visit Breakdown"
+            style="
+              cursor:pointer;
+              text-decoration:underline;
+              color:#7fdfff;
+              font-weight:700;
+            "
+          >
+            0
+          </span>
+
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Distance</span>
+          <span id="msDistance">0 km</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Coverage</span>
+          <span id="msCoverage">0 %</span>
+        </div>
+
+        <div class="monthlyStatusRow">
+          <span>Updated At</span>
+          <span id="msUpdatedAt">--</span>
+        </div>
+
+      </div>
+
+    `;
+
+    L.DomEvent.disableClickPropagation(
+      div
+    );
+
+    return div;
+
+  };
+
+  control.addTo(map);
+
+  window.monthlyStatusControl =
+    control;
+
+}
+function toggleMonthlyStatusCard(){
+
+    try{
+
+        const card =
+            document.getElementById(
+                "monthlyStatusCard"
+            );
+
+        const body =
+            document.getElementById(
+                "monthlyStatusBody"
+            );
+
+        const icon =
+            document.getElementById(
+                "monthlyStatusIcon"
+            );
+
+
+        if(
+            !card ||
+            !body ||
+            !icon
+        ){
+
+            return;
+
+        }
+
+
+        card.classList.toggle(
+            "collapsed"
+        );
+
+
+        const collapsed =
+            card.classList.contains(
+                "collapsed"
+            );
+
+
+        if(
+            collapsed
+        ){
+
+            body.style.display =
+                "none";
+
+            icon.className =
+                "fa-solid fa-chevron-up";
+
+        }
+
+        else{
+
+            body.style.display =
+                "block";
+
+            icon.className =
+                "fa-solid fa-chevron-down";
+
+        }
+
+    }
+
+    catch(err){
+
+        console.error(
+            "toggleMonthlyStatusCard",
+            err
+        );
+
+    }
+
+}
+addMonthlyStatusCard();
+</script><script src="../js/mapControlRail.js"></script><script>
+// Run from Chrome Console: await runRailLayoutChecks(). Resize with Device Toolbar and rerun.
+window.runRailLayoutChecks=async function(){
+ const results=[],frame=()=>new Promise(resolve=>requestAnimationFrame(resolve));
+ const check=(name,ok)=>{results.push({check:name,result:ok?'PASS':'FAIL'});};
+ const rect=node=>node.getBoundingClientRect(),rail=document.querySelector('.btr-map-control-rail');
+ const monthly=document.getElementById('monthlyStatusCard'),layers=layerControl.getContainer();
+ const nodes=[document.querySelector('.leaflet-control-zoom'),document.getElementById('tacticalCompass'),layers,monthly,document.getElementById('gg-offence-main-button')];
+ if(!monthly.classList.contains('collapsed'))toggleMonthlyStatusCard();layerControl.collapse();await frame();
+ check('Collapsed: compass/control/action nodes visible',nodes.every(node=>rect(node).width>0&&rect(node).height>0));
+ check('No control rectangles overlap',nodes.every((node,i)=>nodes.slice(i+1).every(other=>{const a=rect(node),b=rect(other);return a.right<=b.left||b.right<=a.left||a.bottom<=b.top||b.bottom<=a.top;})));
+ const inView=node=>{const a=rect(node);return a.left>=0&&a.top>=0&&a.right<=innerWidth+.5&&a.bottom<=innerHeight+.5;};
+ check('Collapsed controls inside map viewport',nodes.every(inView));
+ layerControl.expand();await frame();
+ const list=document.querySelector('.leaflet-control-layers-list');
+ check('Layers expanded; Monthly collapsed',layers.classList.contains('leaflet-control-layers-expanded')&&monthly.classList.contains('collapsed'));
+ check('Layer flyout left of rail and inside viewport',rect(list).right<=rect(rail).left+.5&&inView(list));
+ list.scrollTop=list.scrollHeight;await frame();
+ const labels=list.querySelectorAll('label'),last=rect(labels[labels.length-1]);
+ check('Final layer checkbox reachable by scrolling',last.top>=rect(list).top&&last.bottom<=rect(list).bottom);
+ toggleMonthlyStatusCard();await frame();
+ const body=document.getElementById('monthlyStatusBody');
+ check('Layers -> Monthly: only Monthly expanded',!layers.classList.contains('leaflet-control-layers-expanded')&&!monthly.classList.contains('collapsed'));
+ check('Monthly flyout left of rail and inside viewport',rect(body).right<=rect(rail).left+.5&&inView(body));
+ layerControl.expand();await frame();check('Monthly -> Layers: only Layers expanded',monthly.classList.contains('collapsed')&&layers.classList.contains('leaflet-control-layers-expanded'));
+ const zoomBefore=map.getZoom();document.querySelector('.leaflet-control-zoom-in').click();await frame();await frame();check('Native Zoom handler retained',map.getZoom()===zoomBefore+1);
+ const button=document.getElementById('gg-offence-main-button'),before=Number(button.dataset.invocations||0);button.click();check('Same OFFENCE handler invoked exactly once',Number(button.dataset.invocations)===before+1);
+ layerControl.collapse();console.table(results);document.title=innerWidth+'x'+innerHeight+' — '+(results.every(result=>result.result==='PASS')?'PASS':'FAIL');return {viewport:[innerWidth,innerHeight],results};
+};
+</script></body></html>

@@ -1,0 +1,40 @@
+{
+  "index.html": {
+    "patch": [
+      {
+        "before": "<script src=\"js/staffPopup.js\"></script>\n<link rel=\"stylesheet\" href=\"css/staffPopup.css\">\n<script src=\"js/staffTrackNavigation.js\"></script>\n<script src=\"js/staffRendering.js\"></script>\n<link rel=\"stylesheet\" href=\"css/staffTrackNavigation.css\">\n<!-- Leaflet Heat Plugin -->",
+        "after": "<script src=\"js/staffPopup.js\"></script>\n<link rel=\"stylesheet\" href=\"css/staffPopup.css\">\n<script src=\"js/staffTrackNavigation.js\"></script>\n<script src=\"js/tigerTeams.js\"></script>\n<script src=\"js/staffRendering.js\"></script>\n<link rel=\"stylesheet\" href=\"css/staffTrackNavigation.css\">\n<!-- Leaflet Heat Plugin -->"
+      },
+      {
+        "before": "              radarHtml = \"\";\n            }\n\n            const icon = L.divIcon({\n              html: `\n                <div class=\"markerWrap\" style=\"opacity:${markerOpacity};\">\n                  ${radarHtml}",
+        "after": "              radarHtml = \"\";\n            }\n\n            const icon = window.TigerTeams?.iconForStaff(s) || L.divIcon({\n              html: `\n                <div class=\"markerWrap\" style=\"opacity:${markerOpacity};\">\n                  ${radarHtml}"
+      },
+      {
+        "before": "                </div>\n              </div>\n\n              <div style=\"background:#ffffff; border-left:4px solid #2e7d32; border:1px solid #d7e9d8; padding:6px; border-radius:7px; margin-bottom:8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);\">\n                <div style=\"color:#1b5e20; font-weight:700; font-size:12px;\">\n                  🟢 DUTY TYPE",
+        "after": "                </div>\n              </div>\n\n              ${window.TigerTeams?.popupRow(s) || \"\"}\n\n              <div style=\"background:#ffffff; border-left:4px solid #2e7d32; border:1px solid #d7e9d8; padding:6px; border-radius:7px; margin-bottom:8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08);\">\n                <div style=\"color:#1b5e20; font-weight:700; font-size:12px;\">\n                  🟢 DUTY TYPE"
+      },
+      {
+        "before": "              createdMarker.addTo(staffLayer);\n\n            }\n            window.StaffTrackNavigation.bindPopup(window.staffMarkers[s.cleanName], staffDistanceKey);\n\n            return { marker: window.staffMarkers[s.cleanName], icon, popup };",
+        "after": "              createdMarker.addTo(staffLayer);\n\n            }\n            window.TigerTeams?.present(window.staffMarkers[s.cleanName], s, markerState);\n            window.StaffTrackNavigation.bindPopup(window.staffMarkers[s.cleanName], staffDistanceKey);\n\n            return { marker: window.staffMarkers[s.cleanName], icon, popup };"
+      }
+    ],
+    "baselineSha256": "3d5d312338185a61725a26d77b1686df44827840a681d330a9eeed996be8cb5c"
+  },
+  "js/staffRendering.js": {
+    "patch": [
+      {
+        "before": "        const age = Date.now() - time(p);\n        return !time(p) || age >= 3 * 60 * 60 * 1000 ? 'OFFLINE' : age > 30 * 60 * 1000 ? 'STALE' : 'LIVE';\n    }\n    function icon(p) {\n        const status = state(p), opacity = status === 'LIVE' ? '1' : status === 'STALE' ? '0.55' : '0.35';\n        const color = status === 'LIVE' ? '#00ff00' : status === 'STALE' ? '#ffd600' : '#ff0000';\n        return w.L.divIcon({html: `",
+        "after": "        const age = Date.now() - time(p);\n        return !time(p) || age >= 3 * 60 * 60 * 1000 ? 'OFFLINE' : age > 30 * 60 * 1000 ? 'STALE' : 'LIVE';\n    }\n    function icon(p, staff) {\n        const special = w.TigerTeams?.iconForStaff(staff);\n        if (special) return special;\n        const status = state(p), opacity = status === 'LIVE' ? '1' : status === 'STALE' ? '0.55' : '0.35';\n        const color = status === 'LIVE' ? '#00ff00' : status === 'STALE' ? '#ffd600' : '#ff0000';\n        return w.L.divIcon({html: `"
+      },
+      {
+        "before": "        const value = current(marker);\n        if (!value) { if (marker.isPopupOpen()) marker.closePopup(); return; }\n        const status = state(value.p);\n        if (marker.__staffState !== status) { marker.setIcon(icon(value.p)); marker.__staffState = status; }\n        w.StaffPopup.setPosition(marker, ...position(value.s, value.p));\n        if (!marker.isPopupOpen()) return;\n        const root = marker.getPopup().getElement(), signature = modelKey(value), version = gisVersion();",
+        "after": "        const value = current(marker);\n        if (!value) { if (marker.isPopupOpen()) marker.closePopup(); return; }\n        const status = state(value.p);\n        const teamType = w.TigerTeams?.activeTeam(value.s)?.type || '';\n        if (marker.__staffState !== status || (marker.__tigerTeamType || '') !== teamType) {\n            const nextIcon = icon(value.p, value.s);\n            if (!teamType || marker.options.icon !== nextIcon) marker.setIcon(nextIcon);\n            marker.__staffState = status; marker.__tigerTeamType = teamType;\n        }\n        w.TigerTeams?.present(marker, value.s, status);\n        w.StaffPopup.setPosition(marker, ...position(value.s, value.p));\n        if (!marker.isPopupOpen()) return;\n        const root = marker.getPopup().getElement(), signature = modelKey(value), version = gisVersion();"
+      },
+      {
+        "before": "            return {marker: null, icon: null, popup: ''};\n        let marker = w.staffMarkers[name];\n        if (!marker) {\n            marker = w.L.marker([lat, lon], {icon: icon(p), zIndexOffset: 3000, autoPanOnFocus: false});\n            marker.__staffKey = name; marker.__staffSession = id; marker.__staffState = state(p);\n            marker.__staffBuilder = builder;\n            marker.__staffPopupFactory = () => {",
+        "after": "            return {marker: null, icon: null, popup: ''};\n        let marker = w.staffMarkers[name];\n        if (!marker) {\n            marker = w.L.marker([lat, lon], {icon: icon(p, s), zIndexOffset: 3000, autoPanOnFocus: false});\n            marker.__tigerTeamType = w.TigerTeams?.activeTeam(s)?.type || '';\n            marker.__staffKey = name; marker.__staffSession = id; marker.__staffState = state(p);\n            marker.__staffBuilder = builder;\n            marker.__staffPopupFactory = () => {"
+      }
+    ],
+    "baselineSha256": "8fdb740220856aae628f6cb4c7fdd2ef9e7af166678d976eed9815f163372b8f"
+  }
+}

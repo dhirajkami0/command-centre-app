@@ -109,6 +109,8 @@
 <script src="js/staffTrackNavigation.js"></script>
 <script src="js/tigerTeams.js"></script>
 <link rel="stylesheet" href="css/tigerTeams.css">
+<script src="js/startupCoordinator.js"></script>
+<script src="js/firestoreRecovery.js"></script>
 <script src="js/staffRendering.js"></script>
 <link rel="stylesheet" href="css/staffTrackNavigation.css">
 <!-- Leaflet Heat Plugin -->
@@ -16506,6 +16508,7 @@ var map = L.map('map', {
 // ======================================
 
 window.StaffStartupDiagnostics?.mark('T1');
+window.StartupCoordinator?.bindMap(map, esriSat);
 esriSat.addTo(map);
 
 // ======================================
@@ -31502,6 +31505,7 @@ async function startMonthlyAnalyticsRealtime(
 
                         await
                             updateMonthlyStatusFromRealtimeAnalytics();
+                        window.StartupCoordinator?.monthly(snapshot.metadata?.fromCache === true ? "Cached" : "Live");
 
                     }
 
@@ -31522,6 +31526,7 @@ async function startMonthlyAnalyticsRealtime(
                         "❌ Monthly analytics realtime listener failed:",
                         error
                     );
+                    window.StartupCoordinator?.monthly("Unavailable", error);
 
                     window.monthlyAnalyticsRealtime
                         .started =
@@ -40589,7 +40594,7 @@ async function updateMonthlyStatusFromRealtimeAnalytics(){
             ){
 
                 liveStaffEl.textContent =
-                    liveStaff.toLocaleString();
+                    window.StartupCoordinator?.staffReady !== false ? liveStaff.toLocaleString() : "Loading…";
 
             }
 
@@ -40841,6 +40846,7 @@ async function updateMonthlyStatusCard(
                         cached,
                         level
                     );
+                    window.StartupCoordinator?.monthly("Cached");
 
 
                     // ---------------------------------------------
@@ -40911,7 +40917,7 @@ async function updateMonthlyStatusCard(
                         ){
 
                             liveStaffEl.textContent =
-                                liveStaff.toLocaleString();
+                                window.StartupCoordinator?.staffReady !== false ? liveStaff.toLocaleString() : "Loading…";
 
 
                             if(
@@ -41013,6 +41019,7 @@ async function updateMonthlyStatusCard(
                     cached,
                     level
                 );
+                window.StartupCoordinator?.monthly("Cached");
 
 
                 // -------------------------------------------------
@@ -41084,7 +41091,7 @@ async function updateMonthlyStatusCard(
                     ){
 
                         liveStaffEl.textContent =
-                            liveStaff.toLocaleString();
+                            window.StartupCoordinator?.staffReady !== false ? liveStaff.toLocaleString() : "Loading…";
 
 
                         if(
@@ -41278,7 +41285,7 @@ async function updateMonthlyStatusCard(
             ){
 
                 liveStaffEl.textContent =
-                    liveStaff.toLocaleString();
+                    window.StartupCoordinator?.staffReady !== false ? liveStaff.toLocaleString() : "Loading…";
 
 
                 if(
@@ -41688,34 +41695,34 @@ function addMonthlyStatusCard() {
               font-weight:700;
             "
           >
-            0
+            Loading…
           </span>
 
         </div>
 
         <div class="monthlyStatusRow">
           <span>Total Grids</span>
-          <span id="msTotalGrids">0</span>
+          <span id="msTotalGrids">Loading…</span>
         </div>
 
         <div class="monthlyStatusRow">
           <span>Grids Visited</span>
-          <span id="msCells">0</span>
+          <span id="msCells">Loading…</span>
         </div>
 
         <div class="monthlyStatusRow">
           <span>Patrolled Area</span>
-          <span id="msArea">0 ha</span>
+          <span id="msArea">Loading…</span>
         </div>
 
         <div class="monthlyStatusRow">
           <span>Total Area</span>
-          <span id="msTotalArea">0 ha</span>
+          <span id="msTotalArea">Loading…</span>
         </div>
 
         <div class="monthlyStatusRow">
           <span>Compartments</span>
-          <span id="msCompartments">0</span>
+          <span id="msCompartments">Loading…</span>
         </div>
 
         <div class="monthlyStatusRow">
@@ -41739,19 +41746,19 @@ function addMonthlyStatusCard() {
               font-weight:700;
             "
           >
-            0
+            Loading…
           </span>
 
         </div>
 
         <div class="monthlyStatusRow">
           <span>Distance</span>
-          <span id="msDistance">0 km</span>
+          <span id="msDistance">Loading…</span>
         </div>
 
         <div class="monthlyStatusRow">
           <span>Coverage</span>
-          <span id="msCoverage">0 %</span>
+          <span id="msCoverage">Loading…</span>
         </div>
 
         <div class="monthlyStatusRow">
@@ -41775,6 +41782,7 @@ function addMonthlyStatusCard() {
 
   window.monthlyStatusControl =
     control;
+  window.StartupCoordinator?.attachStates();
 
 }
 function getLiveStaffForCurrentPolygon(){
@@ -47073,7 +47081,7 @@ async function loadRangeKML(){
     renderFilteredGIS();
 
 
-    centerMap();
+    window.StartupCoordinator.centerInitial(() => centerMap());
 
 
     console.timeEnd(
@@ -47294,6 +47302,7 @@ async function loadRangeKML(){
       "❌ loadRangeKML Error:",
       e
     );
+    window.StartupCoordinator?.boundaryFailed();
 
   }
 
@@ -50860,6 +50869,7 @@ layer.setStyle(originalStyle);
 
 })
 .addTo(window.map);
+window.StartupCoordinator?.boundaryReady();
 
 // ==================================================
 // 🟩 DIVISION LAYER
@@ -82929,6 +82939,8 @@ function loadStaff(){
   // ==========================================
   // 🔥 PREVENT DUPLICATE LISTENERS
   // ==========================================
+  if(!window.FirestoreRecovery.allowStaff()) return;
+
   if(window.staffListenerActive === true){
     console.log("⏸ loadStaff listener already active");
     return;
@@ -83045,7 +83057,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       diagnostic?.record(sessionId, {fastQueryWaitMs: diagnostic.now() - started});
       const current = window.visibleStaffCache?.[cleanName(staff.cleanName || staff.name || '')];
       if (current?.dutyActive !== true || String(current.sessionId || '').trim() !== sessionId ||
-          !window.patrolSessionListeners[sessionId]) return;
+          !window.StaffRendering.isFastCurrent(sessionId, staff)) return;
       const indexedAt = diagnostic?.now();
       const point = window.StaffRendering.selectFast(pointSnap?.docs || [], sessionId);
       diagnostic?.record(sessionId, {fastIndexMs: diagnostic.now() - indexedAt, fastValidPoint: !!point});
@@ -84338,7 +84350,7 @@ function(s, currentSessionId, newPoints){
   // ==========================================
   if (window.userProfile) window.StaffStartupDiagnostics?.mark('T2');
   window.StaffStartupDiagnostics?.mark('T3');
-  window.staffUnsubscribe = onSnapshot(
+  window.staffUnsubscribe = window.FirestoreRecovery.listenStaff(
     liveRef,
     async function processLiveStaff(snapshot){
       window.StaffStartupDiagnostics?.mark('T4');
@@ -85285,10 +85297,10 @@ staff.push(s);
 // ============================================================
 
 // Shared marker presentation and synchronous construction; no duty workflow.
-window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lon, buildPopup = false){
+window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lon, buildPopup = false, enrichGIS = true){
             if (window.StaffRendering && !buildPopup) {
               return window.StaffRendering.ensure(s, patrolPoint, renderSessionId, lat, lon,
-                (staff, point, id, y, x) => window.ensureLiveStaffMarker(staff, point, id, y, x, true));
+                (staff, point, id, y, x, enrich) => window.ensureLiveStaffMarker(staff, point, id, y, x, true, enrich));
             }
             const color = getUserColor(s.cleanName);
 
@@ -85489,7 +85501,7 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
               distanceMeters: null
             };
 
-            if(typeof window.resolveCurrentGIS === "function"){
+            if(enrichGIS && typeof window.resolveCurrentGIS === "function"){
               try {
                 const resolved = window.resolveCurrentGIS(lat, lon);
                 if(resolved){
@@ -85521,7 +85533,9 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
             }
 
             let currentLocationHtml = "";
-            if(currentLocation.type === "FOREST"){
+            if(!enrichGIS){
+              currentLocationHtml = `<div>📌 GIS: <b>Location details loading…</b></div>`;
+            } else if(currentLocation.type === "FOREST"){
               currentLocationHtml = `
                 <div>🌲 Compartment: <b id="staffCompartment_${encodeURIComponent(staffDistanceKey)}">${currentLocation.compartment || "N/A"}</b></div>
                 <div>🧭 Beat: <b id="staffBeat_${encodeURIComponent(staffDistanceKey)}">${currentLocation.beat || "N/A"}</b></div>
@@ -87191,7 +87205,8 @@ if(
 
 window.patrolSessionRequired =
     currentRequiredSessions;
-
+window.StartupCoordinator?.sessions(currentRequiredSessions.size, snapshot.metadata?.fromCache);
+window.StartupCoordinator?.settled(window.StaffRendering.fastPendingCount());
 
 // ============================================================
 // 🔒 RELEASE ONLY SESSIONS NO LONGER REQUIRED
@@ -101918,48 +101933,8 @@ async function findProfileWithRetry(
   //
   // ============================================================
 
-  async function getProfileSnapshot(
-    query,
-    timeoutMs
-  ){
-
-    const timeoutPromise =
-      new Promise(
-        function(
-          _,
-          reject
-        ){
-
-          setTimeout(
-            function(){
-
-              reject(
-                new Error(
-                  "PROFILE_QUERY_TIMEOUT"
-                )
-              );
-
-            },
-            timeoutMs
-          );
-
-        }
-      );
-
-
-    const firestorePromise =
-      window.fb.getDocs(
-        query
-      );
-
-
-    return await Promise.race(
-      [
-        firestorePromise,
-        timeoutPromise
-      ]
-    );
-
+  async function getProfileSnapshot(query, timeoutMs){
+    return window.FirestoreRecovery.profileSnapshot(collectionName, phone, query, timeoutMs);
   }
 
 
@@ -131152,7 +131127,7 @@ function refreshOnlineProfile() {
         console.warn("📴 Online profile check unavailable → preserving session");
 
         if (typeof updateNetworkStatus === "function") {
-          updateNetworkStatus("offline");
+          window.FirestoreRecovery.profileUnavailable();
         }
         return;
       }
@@ -131322,7 +131297,7 @@ function refreshOnlineProfile() {
       console.warn("⚠ refreshOnlineProfile network/runtime failure:", err);
 
       if (typeof updateNetworkStatus === "function") {
-        updateNetworkStatus("offline");
+        window.FirestoreRecovery.profileUnavailable();
       }
     });
   } catch (err) {
@@ -131335,7 +131310,7 @@ function refreshOnlineProfile() {
     console.error("❌ refreshOnlineProfile crashed:", err);
 
     if (typeof updateNetworkStatus === "function") {
-      updateNetworkStatus("offline");
+      window.FirestoreRecovery.profileUnavailable();
     }
   }
 }/* ============================================================

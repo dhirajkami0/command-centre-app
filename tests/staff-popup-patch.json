@@ -1,0 +1,46 @@
+[
+  {
+    "before": "<script src=\"js/leaflet.js\"></script>",
+    "after": "<script src=\"js/leaflet.js\"></script>\n<script src=\"js/staffPopup.js\"></script>\n<link rel=\"stylesheet\" href=\"css/staffPopup.css\">"
+  },
+  {
+    "before": ".bindPopup(popup, { autoClose: false, closeOnClick: false })",
+    "after": ".bindPopup(window.StaffPopup.create(popup))"
+  },
+  {
+    "before": "        marker.setLatLng([\n            lat,\n            lon\n        ]);",
+    "after": "        window.StaffPopup.setPosition(marker, lat, lon);"
+  },
+  {
+    "before": "                    marker.setLatLng([\n                        lat,\n                        lon\n                    ]);",
+    "after": "                    window.StaffPopup.setPosition(marker, lat, lon);"
+  },
+  {
+    "before": "              marker.setLatLng([lat, lon]);",
+    "after": "              window.StaffPopup.setPosition(marker, lat, lon);"
+  },
+  {
+    "before": "              marker.setIcon(icon);",
+    "after": "              if (marker.options.icon.options.html !== icon.options.html) marker.setIcon(icon);"
+  },
+  {
+    "before": "    typeof marker.__ggPopupRefreshTimer === \"number\"",
+    "after": "    typeof marker.__ggPopupRefreshTimer === \"number\" &&\n    !marker.isPopupOpen()"
+  },
+  {
+    "before": "        refreshPopup();\n    }catch(error){",
+    "after": "        window.StaffPopup.deferRefresh(marker, refreshPopup);\n    }catch(error){"
+  },
+  {
+    "before": "                refreshPopup();\n\n\n                // --------------------------------------------",
+    "after": "                window.StaffPopup.deferRefresh(marker, refreshPopup);\n\n\n                // --------------------------------------------"
+  },
+  {
+    "before": "        \"popupclose\",\n        function(){\n\n            try{",
+    "after": "        \"popupclose\",\n        function(){\n            window.StaffPopup.cancelRefresh(marker);\n\n            try{"
+  },
+  {
+    "before": "                    popupElement.dataset.pointId =\n                        pointId;",
+    "after": "                    popupElement.dataset.pointId =\n                        pointId;\n                    window.StaffPopup.place(marker);"
+  }
+]
