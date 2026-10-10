@@ -46514,6 +46514,22 @@ function createGISButton(
 // ======================================================
 // 🌍 LOAD GIS SYSTEM
 // ======================================================
+async function gisCacheWithTimeout(operation, timeoutMs = 2000) {
+  let timer;
+  try {
+    return await Promise.race([
+      Promise.resolve().then(operation),
+      new Promise((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error("GIS IndexedDB timeout")),
+          timeoutMs
+        );
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 async function loadRangeKML(){
 
   console.time(
@@ -46743,9 +46759,9 @@ async function loadRangeKML(){
 
             cachedAdminGIS =
 
-              await idbKeyval.get(
+              await gisCacheWithTimeout(() => idbKeyval.get(
                 "admin_gis_cache_v1"
-              );
+              ));
 
           }
 
@@ -46807,9 +46823,9 @@ async function loadRangeKML(){
 
             window.__ADMIN_GIS_CACHE_TIME__ =
 
-              await idbKeyval.get(
+              await gisCacheWithTimeout(() => idbKeyval.get(
                 "admin_gis_cache_timestamp_v1"
-              );
+              ));
 
           }
           catch(e){
@@ -46978,7 +46994,7 @@ async function loadRangeKML(){
                 "undefined"
             ){
 
-              await idbKeyval.set(
+              await gisCacheWithTimeout(() => idbKeyval.set(
 
                 "admin_gis_cache_v1",
 
@@ -46997,16 +47013,16 @@ async function loadRangeKML(){
 
                 }
 
-              );
+              ));
 
 
-              await idbKeyval.set(
+              await gisCacheWithTimeout(() => idbKeyval.set(
 
                 "admin_gis_cache_timestamp_v1",
 
                 Date.now()
 
-              );
+              ));
 
 
               console.log(
