@@ -214,10 +214,25 @@
                 </div>
               `, iconSize: [30, 30], iconAnchor: [15, 15]});
     }
+    function mayShowStaff(staff){
+        return !w.TigerTeams?.isTigerTeamStaff(staff) || w.TigerTeams.canViewTigerTeams();
+    }
+    function hideRestrictedMarker(name){
+        const marker = w.staffMarkers?.[name];
+        if(!marker) return;
+        marker.remove();
+        delete w.staffMarkers[name];
+    }
+    function enforceTigerTeamVisibility(){
+        for(const [name, marker] of Object.entries(w.staffMarkers || {})){
+            const staff = w.visibleStaffCache?.[name];
+            if(staff && !mayShowStaff(staff)) hideRestrictedMarker(name);
+        }
+    }
     function current(marker) {
         const s = w.visibleStaffCache?.[marker.__staffKey];
         const id = String(s?.sessionId || '').trim();
-        if (!s || s.dutyActive !== true || !id || id !== marker.__staffSession) return null;
+        if (!s || !mayShowStaff(s) || s.dutyActive !== true || !id || id !== marker.__staffSession) return null;
         const p = latest(id);
         return p ? {s, p, id} : null;
     }
@@ -282,6 +297,11 @@
         if (node.textContent !== text) node.textContent = text;
     }
     function refresh(marker) {
+        const currentStaff = w.visibleStaffCache?.[marker.__staffKey];
+        if(currentStaff && !mayShowStaff(currentStaff)) {
+            hideRestrictedMarker(marker.__staffKey);
+            return;
+        }
         const value = current(marker);
         if (!value) { if (marker.isPopupOpen()) marker.closePopup(); return; }
         const status = state(value.p);
@@ -314,6 +334,10 @@
     function ensure(s, p, id, lat, lon, builder) {
         const began = diagnostic ? now() : 0;
         const name = key(s), authorized = w.visibleStaffCache?.[name];
+        if (authorized && !mayShowStaff(authorized)) {
+            hideRestrictedMarker(name);
+            return {marker: null, icon: null, popup: ''};
+        }
         if (!authorized || authorized.dutyActive !== true || String(authorized.sessionId || '').trim() !== id || !valid(p, id))
             return {marker: null, icon: null, popup: ''};
         let marker = w.staffMarkers[name];
@@ -424,6 +448,7 @@
     if (w.document.readyState === 'loading') w.document.addEventListener('DOMContentLoaded', start, {once: true});
     else start();
     w.addEventListener('userProfileLoaded', () => {
+        enforceTigerTeamVisibility();
         if (w.staffListenerActive && w.refreshStaffAuthorization) w.refreshStaffAuthorization();
         else start();
     });

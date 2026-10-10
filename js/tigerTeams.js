@@ -311,6 +311,16 @@
         }));
         return icons.get(type);
     }
+    // Presentation-only visibility. The authenticated profile, never a marker's staff record,
+    // determines who may see Tiger Team positions.
+    function canViewTigerTeams(){
+        const profile = w.userProfile;
+        if(!profile || typeof profile !== 'object') return false;
+        const role = String(profile.role || '').trim().toUpperCase();
+        if(role === 'ADMIN') return true;
+        return !!getTigerTeamForStaff(profile);
+    }
+    function isTigerTeamStaff(staff){ return !!getTigerTeamForStaff(staff); }
     function activeTeam(staff){ return staff?.dutyActive === true ? getTigerTeamForStaff(staff) : null; }
     function iconForStaff(staff){ const team = activeTeam(staff); return team ? getTigerTeamIcon(team.type) : null; }
     function present(marker, staff, freshness){
@@ -336,5 +346,5 @@
         if(!team) return '';
         return `<div data-staff-field="tigerTeam" style="margin-bottom:8px;padding:6px;border-left:3px solid ${team.color};font-size:11px;line-height:1.4;overflow-wrap:normal"><b>${team.type} — ${team.role}</b><div>TEAM: <b>${team.team}</b></div><div>ROLE: ${team.role}</div></div>`;
     }
-    w.TigerTeams = Object.freeze({getTigerTeamForStaff, getTigerTeamIcon, activeTeam, iconForStaff, present, popupRow});
+    w.TigerTeams = Object.freeze({getTigerTeamForStaff, getTigerTeamIcon, activeTeam, iconForStaff, present, popupRow, canViewTigerTeams, isTigerTeamStaff});
 })(window);
