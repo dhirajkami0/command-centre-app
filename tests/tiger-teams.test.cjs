@@ -54,7 +54,7 @@ if(require.main===module){
     assert.equal(teams.popupRow({cleanName:'NORMAL',dutyActive:true}), '');
     for(const [type,color,letter]of [['SBMT','#0284C7','telemetry'],['STPF','#166534','tiger-paw'],['RRT','#F59E0B','response-bolt']]){
         const icon=teams.getTigerTeamIcon(type);assert.equal(icon,teams.getTigerTeamIcon(type));
-        assert(icon.options.html.includes("#00F5FF"));assert(icon.options.html.includes('data-symbol="'+letter+'"'));
+        assert(icon.options.html.includes(color));assert(icon.options.html.includes('data-symbol="'+letter+'"'));
         assert(icon.options.html.includes('btr-team-body'));
         assert.equal(icon.options.html.includes('btr-team-monitoring'),type==='SBMT');
         assert(!/setInterval|setTimeout|<animate|id=/.test(helper));
@@ -64,7 +64,7 @@ if(require.main===module){
     const styles=fs.readFileSync('css/tigerTeams.css','utf8');
     assert.match(styles,/width:19\.125px;/);assert.match(styles,/height:17px;/);
     assert.match(styles,/width:26px;/);assert.match(styles,/height:26px;/);
-    assert.match(styles,/.btr-team-monitoring::before/);assert.match(styles,/prefers-reduced-motion/);assert.match(styles,/pointer-events:none/);
+    assert.doesNotMatch(styles,/animation:|@keyframes|::before/);
     assert(styles.includes('filter:drop-shadow'));
     assert.equal((teams.getTigerTeamIcon('STPF').options.html.match(/data-pad="toe"/g)||[]).length,4);
     assert.equal((teams.getTigerTeamIcon('STPF').options.html.match(/data-pad="central"/g)||[]).length,1);
@@ -89,7 +89,7 @@ if(require.main===module){
     }
     assert.equal(iconUpdates,0,'GPS updates do not redundantly reset special icons');assert.equal(bindCount,1,'Tooltip not rebound on unchanged identity');
     const stale={...point,time:Date.now()-4*60*60*1000};c.sessionPointCache[staff.sessionId].p1=stale;c.StaffRendering.changed(staff.sessionId,'p1',stale,true,false);
-    c.StaffRendering.refresh(marker);assert.equal(marker.element.style.opacity,'1');assert.equal(iconUpdates,0);
+    c.StaffRendering.refresh(marker);assert.equal(marker.element.style.opacity,'0.35');assert.equal(iconUpdates,0);
     staff.dutyActive=false;c.StaffRendering.refresh(marker);assert.equal(c.StaffRendering.ensure(staff,point,staff.sessionId,26,89,builder).marker,null);
     staff.dutyActive=true;c.StaffRendering.refresh(marker);assert.equal(marker.options.icon,teams.getTigerTeamIcon('SBMT'));
     assert.equal(camera,0);assert(positionUpdates>=100);assert.equal(Object.keys(c.staffMarkers).length,1);

@@ -3,7 +3,7 @@ const html=fs.readFileSync('index.html','utf8').replace(/\r\n/g,'\n'),helper=fs.
 const patches=require('./map-ui-optimization-patch.json');
 assert(!helper.includes('radarPulse'));assert(!html.slice(html.indexOf('async function loadSightings('),html.indexOf('async function syncElephantSightingsToIDBBatch(')).includes('radarPulse'));
 assert(html.includes('.radarPulse {')&&html.includes('@keyframes radarPulseWave')&&html.includes('<div class="radarPulse riskPulseRed"></div>'),'Unrelated animations retained');
-assert(/\.btr-team-monitoring::before/.test(fs.readFileSync('css/tigerTeams.css','utf8')), 'Only SBMT pulse selector is present');
+assert(!/animation:|@keyframes|::before/.test(fs.readFileSync('css/tigerTeams.css','utf8')));
 const p=patches['index.html'].find(p=>p.after.includes('const previousPosition'));
 let moves=0,icons=0;const icon={options:{html:'fresh',iconSize:[30,30],iconAnchor:[15,15],className:''}};
 const marker={options:{icon:JSON.parse(JSON.stringify(icon))},getLatLng:()=>({lat:26,lng:89}),setLatLng(){moves++},setIcon(i){icons++;this.options.icon=i}};

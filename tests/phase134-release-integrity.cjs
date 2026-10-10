@@ -15,12 +15,9 @@ function restoreLiveGps(source,file='index.html'){
 function restoreTeamSymbols(source,file){
  source=normalize(source);for(const p of [...(require('./tiger-team-symbol-patch.json')[file]||[])].reverse()){assert.equal(source.split(p.after).length-1,1,'Exact approved symbol hunk');source=source.replace(p.after,p.before);}return source;
 }
-function restoreMarkerVisibility(source,file){
- source=normalize(source);for(const p of [...(require('./marker-visibility-patch.json')[file]||[])].reverse()){assert.equal(source.split(p.after).length-1,1,'Exact approved visibility/layout hunk');source=source.replace(p.after,p.before);}return source;
-}
 function verify(){
- for(const f of ['index.html','js/staffRendering.js'])assert.equal(restoreLiveGps(restoreMarkerVisibility(fs.readFileSync(f,'utf8'),f),f),before(f),'Only reviewed live GPS changes: '+f);
- for(const f of ['js/staffPopup.js','css/staffPopup.css','js/staffTrackNavigation.js','css/staffTrackNavigation.css','js/tigerTeams.js','css/tigerTeams.css','js/staffLiveGps.js','js/analytics/staffProfile.js','js/analytics/staffGPS.js','js/analytics/staffFormatter.js','build.js','.github/workflows/deploy.yml'])assert.equal(f==='css/tigerTeams.css' ? require('./map-ui-optimization-preservation.json')[f].reduceRight((source,p)=>{assert.equal(source.split(p.after).length-1,1);return source.replace(p.after,p.before);},restoreTeamSymbols(restoreMarkerVisibility(fs.readFileSync(f,'utf8'),f),f)) : restoreTeamSymbols(restoreMarkerVisibility(fs.readFileSync(f,'utf8'),f),f),before(f),'Protected baseline file '+f);
+ for(const f of ['index.html','js/staffRendering.js'])assert.equal(restoreLiveGps(fs.readFileSync(f,'utf8'),f),before(f),'Only reviewed live GPS changes: '+f);
+ for(const f of ['js/staffPopup.js','css/staffPopup.css','js/staffTrackNavigation.js','css/staffTrackNavigation.css','js/tigerTeams.js','css/tigerTeams.css','js/staffLiveGps.js','js/analytics/staffProfile.js','js/analytics/staffGPS.js','js/analytics/staffFormatter.js','build.js','.github/workflows/deploy.yml'])assert.equal(f==='css/tigerTeams.css' ? require('./map-ui-optimization-preservation.json')[f].reduceRight((source,p)=>{assert.equal(source.split(p.after).length-1,1);return source.replace(p.after,p.before);},restoreTeamSymbols(fs.readFileSync(f,'utf8'),f)) : restoreTeamSymbols(fs.readFileSync(f,'utf8'),f),before(f),'Protected baseline file '+f);
 }
 function verifyFirebaseReady(html){
  let found;

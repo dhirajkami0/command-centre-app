@@ -20,7 +20,7 @@
   white-space:nowrap;
 
 }
-/* The central team shield remains static and fully opaque. */
+/* Monitoring retains its static teal glow; no radar ring or animation. */
 
 .btr-tiger-team-icon .btr-team-symbol {
   display:block;
@@ -29,38 +29,4 @@
   overflow:visible;
   pointer-events:none;
   filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 2px var(--btr-team-color));
-}
-
-/* Team markers only: ordinary staff freshness styling remains untouched. */
-.leaflet-marker-icon.btr-tiger-team-icon {
-  opacity:1 !important;
-  filter:none !important;
-}
-.btr-tiger-team-icon .btr-team-wrap,
-.btr-tiger-team-icon .btr-team-body,
-.btr-tiger-team-icon .btr-team-symbol {
-  opacity:1 !important;
-}
-.btr-tiger-team-icon .btr-team-symbol {
-  filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 2px #00F5FF) drop-shadow(0 0 4px #00F5FF);
-}
-.btr-tiger-team-icon .btr-team-monitoring::before {
-  content:"";
-  position:absolute;
-  width:20px;
-  height:20px;
-  left:50%;
-  top:50%;
-  box-sizing:border-box;
-  border:1px solid #00F5FF;
-  border-radius:50%;
-  pointer-events:none;
-  animation:btr-sbmt-cyan-radar 3s ease-out infinite;
-}
-@keyframes btr-sbmt-cyan-radar {
-  0% { transform:translate(-50%,-50%) scale(.8); opacity:.65; }
-  85%,100% { transform:translate(-50%,-50%) scale(1.65); opacity:0; }
-}
-@media (prefers-reduced-motion:reduce) {
-  .btr-tiger-team-icon .btr-team-monitoring::before { content:none; animation:none; }
 }

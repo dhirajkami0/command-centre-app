@@ -29,8 +29,6 @@
         }
     });
     function cancelRefresh(marker) {
-        if (marker.__ggStaffPopupPlacement != null) w.cancelAnimationFrame(marker.__ggStaffPopupPlacement);
-        marker.__ggStaffPopupPlacement = null;
         if (marker.__ggStaffPopupFrame != null) w.cancelAnimationFrame(marker.__ggStaffPopupFrame);
         if (marker.__ggStaffPopupTask != null) w.clearTimeout(marker.__ggStaffPopupTask);
         marker.__ggStaffPopupFrame = marker.__ggStaffPopupTask = null;
@@ -62,15 +60,11 @@
             if (current.lat !== lat || current.lng !== lng) marker.setLatLng([lat, lng]);
         },
         place(marker) {
-            if (!marker.isPopupOpen() || marker.__ggStaffPopupPlacement != null) return;
-            // Coalesce display-only layout; GPS position/data updates remain synchronous.
-            marker.__ggStaffPopupPlacement = w.requestAnimationFrame(() => {
-                marker.__ggStaffPopupPlacement = null;
-                const popup = marker.getPopup();
-                if (!marker.isPopupOpen() || !popup?._map) return;
+            const popup = marker.getPopup();
+            if (marker.isPopupOpen()) {
                 popup._updateLayout();
                 popup._updatePosition();
-            });
+            }
         },
         deferRefresh, cancelRefresh
     };
