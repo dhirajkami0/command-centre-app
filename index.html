@@ -10517,7 +10517,23 @@ requestAnimationFrame(() => {
         // 🔥 LOAD KML
         // ==================================================
 
-        await loadRangeKML();
+        // GIS startup: wait for the authenticated profile and Leaflet map.
+        // The original 200 ms timer can fire before the profile is available.
+        // Keep the existing role-aware loader, cache and renderer unchanged.
+        const gisStartupDeadline = Date.now() + 60000;
+        while (
+          (!window.userProfile?.role || !window.map) &&
+          Date.now() < gisStartupDeadline
+        ) {
+          await new Promise(resolve => setTimeout(resolve, 250));
+        }
+        if (window.userProfile?.role && window.map) {
+          await loadRangeKML();
+        } else {
+          console.warn(
+            "GIS startup deferred: profile/map not ready within 60 seconds; no GIS data changed"
+          );
+        }
        
         // ==================================================
         // 🔒 BACKEND LOCK
