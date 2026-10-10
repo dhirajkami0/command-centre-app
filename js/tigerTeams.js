@@ -85,10 +85,10 @@
         "team": "RRT-4",
         "documentId": "PRADYUT DUTTA"
     },
-    "NIRMAL CHETRI": {
+    "NIRMAL CHHETRI": {
         "type": "RRT",
         "team": "RRT-4",
-        "documentId": "NIRMAL CHETRI"
+        "documentId": "NIRMAL CHHETRI"
     },
     "SANJAY LAMA": {
         "type": "RRT",
