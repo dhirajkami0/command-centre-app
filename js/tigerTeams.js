@@ -220,6 +220,12 @@
         "team": "SBMT-1",
         "documentId": "SAJEN SUNAR"
     },
+"SEKENDAR RABHA": {
+        "type": "SBMT",
+        "team": "SBMT-2",
+        "documentId": "SEKENDAR RABHA"
+    },
+
     "SANJIB KHARIA": {
         "type": "SBMT",
         "team": "SBMT-1",
@@ -235,6 +241,12 @@
         "team": "SBMT-2",
         "documentId": "ARSAD ALI"
     },
+ "SURESH RAVA": {
+        "type": "SBMT",
+        "team": "SBMT-2",
+        "documentId": "SURESH RAVA"
+    },
+
     "RAJ MANGAR": {
         "type": "SBMT",
         "team": "SBMT-2",
@@ -292,9 +304,10 @@
     function getTigerTeamIcon(type){
         const category = categories[type];
         if(!category) return null;
+        const markerColor = {SBMT: "#00F5FF", STPF: "#39FF14", RRT: "#FF6B00"}[type]; // Marker presentation only; team metadata unchanged.
         if(!icons.has(type)) icons.set(type, w.L.divIcon({
             className: 'btr-tiger-team-icon', iconSize: [30, 30], iconAnchor: [15, 15],
-            html: `<div class="btr-team-wrap" aria-hidden="true" style="--btr-team-color:${category.color}"><div class="btr-team-body${type === 'SBMT' ? ' btr-team-monitoring' : ''}"><svg class="btr-team-symbol" viewBox="0 0 24 24" preserveAspectRatio="none" focusable="false" aria-hidden="true"><path d="M1 1h22v10c0 6-6 10-11 12C7 21 1 17 1 11z" fill="${category.color}" stroke="white" stroke-width="1" stroke-linejoin="round"/>${symbols[type]}</svg></div></div>`
+            html: `<div class="btr-team-wrap" aria-hidden="true" style="--btr-team-color:${markerColor}"><div class="btr-team-body${type === 'SBMT' ? ' btr-team-monitoring' : type === 'STPF' ? ' btr-team-stpf' : ' btr-team-rrt'}"><svg class="btr-team-symbol" viewBox="0 0 24 24" preserveAspectRatio="none" focusable="false" aria-hidden="true"><path d="M1 1h22v10c0 6-6 10-11 12C7 21 1 17 1 11z" fill="${markerColor}" stroke="white" stroke-width="1" stroke-linejoin="round"/>${symbols[type]}</svg></div></div>`
         }));
         return icons.get(type);
     }
@@ -314,7 +327,7 @@
         const element = marker.getElement?.();
         if(element){
             if(element.getAttribute?.('aria-label') !== label) element.setAttribute('aria-label', label);
-            const opacity = freshness === 'OFFLINE' ? '0.35' : freshness === 'STALE' ? '0.55' : '1';
+            const opacity = '1'; // Team visibility stays bright; GPS freshness remains in popup data.
             if(element.style.opacity !== opacity) element.style.opacity = opacity;
         }
     }

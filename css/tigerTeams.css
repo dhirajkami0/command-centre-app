@@ -1,32 +1,103 @@
-/* Match the normal 17px FA military glyph (18/16 em wide), in its 26px wrapper. */
+
+/* BTRGuard Tiger Team styling */
+/* Preserve existing marker dimensions and structure. */
+
 .btr-tiger-team-icon .btr-team-wrap {
-  width:26px;
-  height:26px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
 .btr-tiger-team-icon .btr-team-body {
-  position:relative;
-  width:19.125px;
-  height:17px;
-  box-sizing:border-box;
-  border:0;
-  border-radius:0;
-  background:transparent;
-  color:#fff;
-  font:700 12px/15px Arial,sans-serif;
-  text-align:center;
-  white-space:nowrap;
-
+  position: relative;
+  width: 19.125px;
+  height: 17px;
+  box-sizing: border-box;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #fff;
+  font: 700 12px/15px Arial, sans-serif;
+  text-align: center;
+  white-space: nowrap;
 }
-/* Monitoring retains its static teal glow; no radar ring or animation. */
 
+/* Bright team symbol; colour follows team-specific variable. */
 .btr-tiger-team-icon .btr-team-symbol {
-  display:block;
-  width:100%;
-  height:100%;
-  overflow:visible;
-  pointer-events:none;
-  filter:drop-shadow(0 0 1px #000) drop-shadow(0 0 2px var(--btr-team-color));
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 0 1px #000)
+    drop-shadow(0 0 2px var(--btr-team-color, #00F5FF))
+    drop-shadow(0 0 4px var(--btr-team-color, #00F5FF));
+}
+
+/* Only Tiger Team markers stay fully opaque. */
+.leaflet-marker-icon.btr-tiger-team-icon {
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.btr-tiger-team-icon .btr-team-wrap,
+.btr-tiger-team-icon .btr-team-body,
+.btr-tiger-team-icon .btr-team-symbol {
+  opacity: 1 !important;
+}
+
+/* SBMT — Electric Cyan */
+.btr-tiger-team-icon .btr-team-monitoring {
+  --btr-team-color: #00F5FF;
+}
+
+/* STPF — Neon Green */
+.btr-tiger-team-icon .btr-team-stpf,
+.btr-tiger-team-icon .btr-team-protection {
+  --btr-team-color: #39FF14;
+}
+
+/* RRT / QRT — Fluorescent Orange */
+.btr-tiger-team-icon .btr-team-rrt,
+.btr-tiger-team-icon .btr-team-qrt,
+.btr-tiger-team-icon .btr-team-response {
+  --btr-team-color: #FF6B00;
+}
+
+/* SBMT radar only — central marker does not fade. */
+.btr-tiger-team-icon .btr-team-monitoring::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 50%;
+  top: 50%;
+  box-sizing: border-box;
+  border: 1.5px solid #00F5FF;
+  border-radius: 50%;
+  pointer-events: none;
+  animation: btr-sbmt-cyan-radar 3s ease-out infinite;
+}
+
+@keyframes btr-sbmt-cyan-radar {
+  0% {
+    transform: translate(-50%, -50%) scale(.8);
+    opacity: .75;
+  }
+
+  85%, 100% {
+    transform: translate(-50%, -50%) scale(1.65);
+    opacity: 0;
+  }
+}
+
+/* Accessibility: disable motion when requested. */
+@media (prefers-reduced-motion: reduce) {
+  .btr-tiger-team-icon .btr-team-monitoring::before {
+    content: none;
+    animation: none;
+  }
 }
