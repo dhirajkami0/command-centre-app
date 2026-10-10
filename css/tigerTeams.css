@@ -76,7 +76,7 @@
   left: 50%;
   top: 50%;
   box-sizing: border-box;
-  border: 1.5px solid #FF00FF;
+  border: 1.5px solid #00FFFF;
   border-radius: 50%;
   pointer-events: none;
   animation: btr-sbmt-cyan-radar 3s ease-out infinite;
