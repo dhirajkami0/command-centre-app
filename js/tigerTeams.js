@@ -292,9 +292,10 @@
     function getTigerTeamIcon(type){
         const category = categories[type];
         if(!category) return null;
+        const markerColor = "#00F5FF"; // Marker-only presentation; team metadata is unchanged.
         if(!icons.has(type)) icons.set(type, w.L.divIcon({
             className: 'btr-tiger-team-icon', iconSize: [30, 30], iconAnchor: [15, 15],
-            html: `<div class="btr-team-wrap" aria-hidden="true" style="--btr-team-color:${category.color}"><div class="btr-team-body${type === 'SBMT' ? ' btr-team-monitoring' : ''}"><svg class="btr-team-symbol" viewBox="0 0 24 24" preserveAspectRatio="none" focusable="false" aria-hidden="true"><path d="M1 1h22v10c0 6-6 10-11 12C7 21 1 17 1 11z" fill="${category.color}" stroke="white" stroke-width="1" stroke-linejoin="round"/>${symbols[type]}</svg></div></div>`
+            html: `<div class="btr-team-wrap" aria-hidden="true" style="--btr-team-color:${markerColor}"><div class="btr-team-body${type === 'SBMT' ? ' btr-team-monitoring' : ''}"><svg class="btr-team-symbol" viewBox="0 0 24 24" preserveAspectRatio="none" focusable="false" aria-hidden="true"><path d="M1 1h22v10c0 6-6 10-11 12C7 21 1 17 1 11z" fill="${markerColor}" stroke="white" stroke-width="1" stroke-linejoin="round"/>${symbols[type]}</svg></div></div>`
         }));
         return icons.get(type);
     }
@@ -314,7 +315,7 @@
         const element = marker.getElement?.();
         if(element){
             if(element.getAttribute?.('aria-label') !== label) element.setAttribute('aria-label', label);
-            const opacity = freshness === 'OFFLINE' ? '0.35' : freshness === 'STALE' ? '0.55' : '1';
+            const opacity = '1'; // Team visibility stays bright; GPS freshness remains in popup data.
             if(element.style.opacity !== opacity) element.style.opacity = opacity;
         }
     }
