@@ -33,8 +33,8 @@
   pointer-events: none;
   filter:
     drop-shadow(0 0 1px #000)
-    drop-shadow(0 0 2px var(--btr-team-color, #00F5FF))
-    drop-shadow(0 0 4px var(--btr-team-color, #00F5FF));
+    drop-shadow(0 0 2px var(--btr-team-color, #FF00FF))
+    drop-shadow(0 0 4px var(--btr-team-color, #FF00FF));
 }
 
 /* Only Tiger Team markers stay fully opaque. */
@@ -51,7 +51,7 @@
 
 /* SBMT — Electric Cyan */
 .btr-tiger-team-icon .btr-team-monitoring {
-  --btr-team-color: #00F5FF;
+  --btr-team-color: #FF00FF;
 }
 
 /* STPF — Neon Green */
@@ -76,7 +76,7 @@
   left: 50%;
   top: 50%;
   box-sizing: border-box;
-  border: 1.5px solid #00F5FF;
+  border: 1.5px solid #FF00FF;
   border-radius: 50%;
   pointer-events: none;
   animation: btr-sbmt-cyan-radar 3s ease-out infinite;

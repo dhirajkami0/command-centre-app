@@ -304,7 +304,7 @@
     function getTigerTeamIcon(type){
         const category = categories[type];
         if(!category) return null;
-        const markerColor = {SBMT: "#00F5FF", STPF: "#39FF14", RRT: "#FF6B00"}[type]; // Marker presentation only; team metadata unchanged.
+        const markerColor = {SBMT: "#FF00FF", STPF: "#39FF14", RRT: "#FF6B00"}[type]; // Marker presentation only; team metadata unchanged.
         if(!icons.has(type)) icons.set(type, w.L.divIcon({
             className: 'btr-tiger-team-icon', iconSize: [30, 30], iconAnchor: [15, 15],
             html: `<div class="btr-team-wrap" aria-hidden="true" style="--btr-team-color:${markerColor}"><div class="btr-team-body${type === 'SBMT' ? ' btr-team-monitoring' : type === 'STPF' ? ' btr-team-stpf' : ' btr-team-rrt'}"><svg class="btr-team-symbol" viewBox="0 0 24 24" preserveAspectRatio="none" focusable="false" aria-hidden="true"><path d="M1 1h22v10c0 6-6 10-11 12C7 21 1 17 1 11z" fill="${markerColor}" stroke="white" stroke-width="1" stroke-linejoin="round"/>${symbols[type]}</svg></div></div>`
