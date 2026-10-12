@@ -13789,10 +13789,24 @@ else{
 
 async function notifyAndroidDuty(
     active,
-    providedSessionId = ""
+    providedSessionId = "",
+    sessionSafeStop = false
 ) {
 
   try {
+    if (!active && sessionSafeStop) {
+      const endingId = String(providedSessionId || '').trim();
+      if (!endingId || (window.currentSessionId && window.currentSessionId !== endingId)) return false;
+      // Legacy updateDutyState(false) also writes lifecycle state without a session guard.
+      // Do not replay it after browser closure. A native session-only stop must acknowledge its ID.
+      if (typeof window.Android?.stopSession !== 'function') {
+        console.warn('Android session-safe stop blocked: native stopSession contract unavailable', endingId);
+        return false;
+      }
+      const response = await window.Android.stopSession(endingId);
+      const ack = typeof response === 'string' ? JSON.parse(response) : response;
+      return ack?.sessionId === endingId && ack?.stopped === true;
+    }
 
     console.log(
       `📱 notifyAndroidDuty(${active})`
@@ -20473,27 +20487,12 @@ await window.fb.updateDoc(
     console.groupEnd();
   }
 }
-function finalizeSessionLifecycle() {
-
-  console.trace(
-    "🚨 finalizeSessionLifecycle CALLED"
-  );
-
-  if (window.startDutyInProgress === true) {
-
-    console.warn(
-      "⛔ finalizeSessionLifecycle blocked during startDuty"
-    );
-
-    return;
-  }
-
-  window.currentSessionId = null;
-
-  if (window.localStorage) {
-    window.localStorage.removeItem(
-      "sessionId"
-    );
+function finalizeSessionLifecycle(endingSessionId) {
+  if (!endingSessionId) return;
+  if (window.currentSessionId === endingSessionId) window.currentSessionId = null;
+  if (localStorage.getItem('sessionId') === endingSessionId) {
+    localStorage.removeItem('sessionId');
+    localStorage.setItem('dutyActive', 'false');
   }
 }
     async function buildGridSpatialIndex(){
@@ -29902,6 +29901,8 @@ async function autoShowEndDuty() {
   window.dutyCheckRunning = true;
 
   try {
+    if (window.endDutyInProgress === true) return;
+    const endingSessionId = window.currentSessionId || localStorage.getItem('sessionId') || window.endedDutySessionId || '';
 
     // =====================================================
     // 🔥 FIREBASE READY
@@ -30375,12 +30376,11 @@ async function autoShowEndDuty() {
             "function"
           ) {
 
-            await notifyAndroidDuty(
-              false
-            );
+            const stopped = await notifyAndroidDuty(false, endingSessionId, true);
+            if (!stopped) console.warn('Android GPS stop is not confirmed', endingSessionId);
 
             console.log(
-              "✅ APK GPS STOPPED"
+              "📱 APK GPS STOP REQUEST CHECKED"
             );
 
           } else {
@@ -120487,6 +120487,10 @@ async function commitAuthoritativeSessionDistance(
 
                 const trackData =
                     trackSnap.data() || {};
+                if (trackData.dutyActive !== false || trackData.status !== 'ENDED' ||
+                    !Number.isSafeInteger(trackData.endedAt) || trackData.endedAt <= 0) {
+                    throw new Error('Distance accounting requires a confirmed ended session');
+                }
 
 
                 // =================================================
@@ -120516,57 +120520,6 @@ async function commitAuthoritativeSessionDistance(
                     );
 
 
-                    // ------------------------------------------------
-                    // IMPORTANT:
-                    // We still finalize the session state if an
-                    // earlier version had already accounted distance
-                    // but did not finalize duty state.
-                    //
-                    // This is ONE write only when this recovery
-                    // situation actually occurs.
-                    // ------------------------------------------------
-
-                    const needsFinalization =
-                        trackData.dutyActive === true ||
-                        String(
-                            trackData.status || ""
-                        ).toUpperCase() !==
-                            "ENDED";
-
-
-                    if(
-                        needsFinalization
-                    ){
-
-                        transaction.set(
-                            trackRef,
-                            {
-
-                                dutyActive:
-                                    false,
-
-                                status:
-                                    "ENDED",
-
-                                endedAt:
-                                    endedAt,
-
-                                updatedAt:
-                                    endedAt,
-
-                                distanceAccountingPending:
-                                    false
-
-                            },
-                            {
-                                merge:
-                                    true
-                            }
-                        );
-
-                    }
-
-
                     return {
 
                         applied:
@@ -120588,7 +120541,7 @@ async function commitAuthoritativeSessionDistance(
                             null,
 
                         recoveredFinalization:
-                            needsFinalization
+                            false
 
                     };
 
@@ -120829,23 +120782,6 @@ async function commitAuthoritativeSessionDistance(
                 transaction.set(
                     trackRef,
                     {
-
-                        // -----------------------------------------
-                        // FINAL DUTY STATE
-                        // -----------------------------------------
-
-                        dutyActive:
-                            false,
-
-                        status:
-                            "ENDED",
-
-                        endedAt:
-                            endedAt,
-
-                        updatedAt:
-                            endedAt,
-
 
                         // -----------------------------------------
                         // AUTHORITATIVE DISTANCE
@@ -121144,10 +121080,92 @@ async function loadPatrolPointsFromIDB(
 
     }
 }
+function captureEndDutyContext(profile) {
+  const staffId = String(profile?.cleanName || '').trim();
+  const sessionId = String(localStorage.getItem('sessionId') || window.currentSessionId || '').trim();
+  if (!staffId || staffId.includes('/') || !sessionId || sessionId.includes('/')) {
+    throw new Error('End Duty requires the exact active session. Refresh duty status and retry.');
+  }
+  const key = 'endDutyClosureRequest:' + staffId;
+  let pending = window.endDutyClosureRequests?.[staffId];
+  try { pending ||= JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) {}
+  const endAtMs = pending?.sessionId === sessionId && Number.isSafeInteger(pending.endAtMs)
+    ? pending.endAtMs : Date.now();
+  const context = Object.freeze({staffId, sessionId, endAtMs});
+  window.endDutyClosureRequests ||= {};
+  window.endDutyClosureRequests[staffId] = context;
+  try { localStorage.setItem(key, JSON.stringify(context)); } catch (err) {
+    console.warn('End Duty retry context is available only in this tab', err);
+  }
+  return context;
+}
+
+async function closeEndDutySession(context) {
+  const {staffId, sessionId, endAtMs} = context;
+  if (!staffId || staffId.includes('/') || !sessionId || sessionId.includes('/') ||
+      !Number.isSafeInteger(endAtMs) || endAtMs <= 0) throw new Error('Invalid ending session context');
+  if (!window.db || typeof window.fb?.runTransaction !== 'function') throw new Error('Firestore is not ready');
+  const liveRef = window.fb.doc(window.db, 'live_staff', staffId);
+  const trackRef = window.fb.doc(window.db, 'patrol_tracks', sessionId);
+  return window.fb.runTransaction(window.db, async transaction => {
+    const liveSnap = await transaction.get(liveRef);
+    const trackSnap = await transaction.get(trackRef);
+    if (!liveSnap.exists() || !trackSnap.exists()) throw new Error('Duty documents missing; no session was changed');
+    const live = liveSnap.data(), track = trackSnap.data();
+    // Identity consistency only; these fields do not replace authenticated security rules.
+    if (track.cleanName !== staffId || track.sessionId !== sessionId ||
+        (live.cleanName && live.cleanName !== staffId)) throw new Error('Session ownership mismatch; no session was changed');
+    if (track.dutyActive === false && track.status === 'ENDED' &&
+        Number.isSafeInteger(track.endedAt) && track.endedAt > 0) {
+      if (live.sessionId === sessionId) throw new Error('Inconsistent ended session; reconciliation required');
+      return {alreadyEnded:true, endedAt:track.endedAt, dutyStartedAt:track.startedAt};
+    }
+    if (live.sessionId !== sessionId) throw new Error('Active session changed; no session was ended. Refresh duty status.');
+    if (live.dutyActive !== true || live.status !== 'ACTIVE' || track.dutyActive !== true ||
+        track.status !== 'ACTIVE' || track.endedAt != null) throw new Error('Duty lifecycle conflict; no session was changed');
+    if (!Number.isSafeInteger(track.startedAt) || track.startedAt <= 0 || endAtMs < track.startedAt)
+      throw new Error('Invalid session start/end time; no session was changed');
+    const telemetry = {
+      distanceCoveredKm:live.distanceCoveredKm ?? null,
+      distanceCoveredMeters:live.distanceCoveredMeters ?? null,
+      patrolPointCount:live.patrolPointCount ?? null
+    };
+    transaction.update(trackRef, {
+      dutyActive:false, status:'ENDED', endedAt:endAtMs, updatedAt:endAtMs,
+      endDutyClosureTelemetry:telemetry, endDutyReportingState:'PENDING'
+    });
+    transaction.update(liveRef, {
+      dutyActive:false, status:'ENDED', sessionId:'', lastEndedSessionId:sessionId,
+      speed:0, patrolPointCount:0, distanceCoveredKm:0, distanceCoveredMeters:0,
+      updatedAt:window.fb.serverTimestamp(), lastDutyEnd:new Date(endAtMs).toISOString(),
+      ...Object.fromEntries(['range','division','lat','lon','heading','turnRate','accuracy',
+        'location','timestamp','time','lastSeen'].map(key => [key, window.fb.deleteField()]))
+    });
+    return {alreadyEnded:false, endedAt:endAtMs, dutyStartedAt:track.startedAt, telemetry};
+  });
+}
+
+function recordEndDutyReportState(context, state, failures = []) {
+  const record = {sessionId:context.sessionId, staffId:context.staffId, endedAt:context.endAtMs,
+    state, failures:failures.map(error => String(error?.message || error)), updatedAt:Date.now()};
+  window.endDutyReportStates ||= {};
+  window.endDutyReportStates[context.sessionId] = record;
+  try { localStorage.setItem('endDutyReport:' + context.sessionId, JSON.stringify(record)); }
+  catch (err) { console.warn('Report retry state is available only in this tab', err); }
+  return record;
+}
+
 async function submitEndDuty(event) {
   console.group("🚨 submitEndDuty TRIGGERED");
 
+  let ownsEndDutyLock = false;
+  let lifecycleClosed = false;
+  let endingContext = null;
+  const reportingFailures = [];
   try {
+    if (window.endDutyInProgress === true) return;
+    window.endDutyInProgress = true;
+    ownsEndDutyLock = true;
     // ============================================================
     // 🔒 ONLY USER CLICK
     // ============================================================
@@ -121297,151 +121315,35 @@ async function submitEndDuty(event) {
     // ============================================================
     // 🔥 SESSION ID
     // ============================================================
-    const sessionId = localStorage.getItem("sessionId") || window.currentSessionId || "";
-// ============================================================
-// 🕐 CAPTURE AUTHORITATIVE DUTY START TIME
-// ------------------------------------------------------------
-// Existing sources only:
-//
-// 1. window.dutyStartedAt
-// 2. localStorage.dutyStartedAt
-// 3. existing legacy dutyStartTime
-// 4. sessionId timestamp
-//
-// sessionId remains the final authoritative recovery source.
-// ============================================================
-
-let dutyStartedAt =
-  Number(
-    window.dutyStartedAt
-  );
-
-if (
-  !Number.isFinite(
-    dutyStartedAt
-  ) ||
-  dutyStartedAt <= 0
-) {
-
-  dutyStartedAt =
-    Number(
-      localStorage.getItem(
-        "dutyStartedAt"
-      )
-    );
-
-}
-
-if (
-  !Number.isFinite(
-    dutyStartedAt
-  ) ||
-  dutyStartedAt <= 0
-) {
-
-  dutyStartedAt =
-    Number(
-      localStorage.getItem(
-        "dutyStartTime"
-      )
-    );
-
-}
-
-// ============================================================
-// 🔒 SESSION ID START-TIME FALLBACK
-// ============================================================
-
-if (
-  (
-    !Number.isFinite(
-      dutyStartedAt
-    ) ||
-    dutyStartedAt <= 0
-  ) &&
-  sessionId
-) {
-
-  const sessionTimestamp =
-    Number(
-      String(
-        sessionId
-      )
-      .split("_")
-      .pop()
-    );
-
-  if (
-    Number.isFinite(
-      sessionTimestamp
-    ) &&
-    sessionTimestamp > 0
-  ) {
-
-    dutyStartedAt =
-      sessionTimestamp;
-
-    window.dutyStartedAt =
-      sessionTimestamp;
-
-    localStorage.setItem(
-      "dutyStartedAt",
-      String(
-        sessionTimestamp
-      )
-    );
-
-    console.log(
-      "🕐 DUTY START RECOVERED FROM SESSION ID:",
-      sessionTimestamp
-    );
-
-  }
-
-}
-
-// ============================================================
-// 🛑 DO NOT CREATE A FAKE START TIME
-// ============================================================
-
-if (
-  !Number.isFinite(
-    dutyStartedAt
-  ) ||
-  dutyStartedAt <= 0
-) {
-
-  console.error(
-    "❌ END DUTY BLOCKED — VALID START TIME NOT AVAILABLE",
-    {
-      sessionId,
-      dutyStartedAt
+    endingContext = captureEndDutyContext(profile);
+    const sessionId = endingContext.sessionId;
+    const endingPointMap = Object.fromEntries(Object.entries(window.sessionPointCache?.[sessionId] || {})
+      .map(([key, point]) => [key, {...point}]));
+    window.endDutyClosureInProgress = true;
+    let lifecycleResult;
+    try { lifecycleResult = await closeEndDutySession(endingContext); }
+    finally { window.endDutyClosureInProgress = false; }
+    lifecycleClosed = true;
+    const endedAt = lifecycleResult.endedAt;
+    let dutyStartedAt = lifecycleResult.dutyStartedAt;
+    if (lifecycleResult.alreadyEnded) {
+      finalizeSessionLifecycle(sessionId);
+      showToast('Duty already ended. Existing reports and accounting were preserved.');
+      return;
     }
-  );
-
-  showToast(
-    "❌ Duty start time could not be recovered.",
-    "error"
-  );
-
-  console.groupEnd();
-  return;
-
-}
-
-console.log(
-  "🕐 AUTHORITATIVE DUTY START:",
-  {
-    sessionId,
-    dutyStartedAt
-  }
-);  // ============================================================
-// 🔒 END-DUTY SESSION LOCK
-// ------------------------------------------------------------
-// Once this session is ended, no old-session GPS/write flow
-// is allowed to reactivate dutyActive.
-// ============================================================
-
+    if (!window.currentSessionId || window.currentSessionId === sessionId) window.isDutyActive = false;
+    window.endedDutySessionId = sessionId;
+    finalizeSessionLifecycle(sessionId);
+    delete window.endDutyClosureRequests?.[profile.cleanName];
+    try { localStorage.removeItem('endDutyClosureRequest:' + profile.cleanName); } catch (_) {}
+    recordEndDutyReportState(endingContext, 'PENDING');
+    showToast('✅ Duty ended. Processing patrol report...');
+    const androidStopped = await notifyAndroidDuty(false, sessionId, true);
+    if (!androidStopped && window.Android) {
+      showToast('⚠️ Duty ended. Android GPS stop is unconfirmed; native compatibility needs attention.');
+      window.endDutyAndroidStopPending = sessionId;
+      console.warn('Duty closed; Android session-specific stop remains unconfirmed', sessionId);
+    }
 const endedSessionId = String(
   sessionId || ""
 );
@@ -121510,9 +121412,7 @@ const authoritativeDistancePromise =
         try {
 
             const cachedPoints =
-                window.sessionPointCache?.[
-                    sessionId
-                ];
+                endingPointMap;
 
             if(
                 !cachedPoints ||
@@ -121922,9 +121822,8 @@ const authoritativeDistancePromise =
     const dutyType = document.getElementById("d-type")?.value || "Patrolling";
 
     // ============================================================
-    // ⚡ IMMEDIATE UI TRANSITION
+    // ⚡ UI TRANSITION AFTER CONFIRMED CLOSURE
     // ============================================================
-    window.isDutyActive = false;
     try {
       closeEndDutyForm();
     } catch (e) {}
@@ -121936,12 +121835,12 @@ const authoritativeDistancePromise =
     } catch (e) {}
 
     try {
-      if (typeof removeStaffFromUI === "function") {
+      if ((!window.currentSessionId || window.currentSessionId === sessionId) && typeof removeStaffFromUI === "function") {
         removeStaffFromUI(profile.cleanName);
       }
     } catch (e) {}
 
-    showToast("⚡ Ending Duty...");
+    showToast("📊 Processing ended duty report...");
 
     // ============================================================
     // 🔥 OBS
@@ -121963,8 +121862,10 @@ console.log("📤 PAYLOAD:", payload);
 // 🎯 FINAL AUTHORITATIVE DISTANCE
 // ============================================================
 
-const authoritativeDistanceKm =
-    await authoritativeDistancePromise;
+const cachedDistanceKm = await authoritativeDistancePromise;
+const savedDistanceKm = lifecycleResult.telemetry.distanceCoveredKm ??
+  (lifecycleResult.telemetry.distanceCoveredMeters == null ? null : lifecycleResult.telemetry.distanceCoveredMeters / 1000);
+const authoritativeDistanceKm = cachedDistanceKm ?? savedDistanceKm;
 
 const hasAuthoritativeDistance =
     Number.isFinite(
@@ -121984,7 +121885,7 @@ const hasAuthoritativeDistance =
 // 🔥 BACKEND SAVE
 // ============================================================
 
-Promise.allSettled([
+await Promise.allSettled([
 callBackend("markDutyOutWithObs", payload),
 
      // ============================================================
@@ -122008,100 +121909,6 @@ callBackend("markDutyOutWithObs", payload),
 // Historical patrol points remain untouched.
 // ============================================================
 
-window.fb.setDoc(
-
-  window.fb.doc(
-    window.db,
-    "live_staff",
-    profile.cleanName
-  ),
-
-  {
-
-    // ========================================================
-    // 🔥 DUTY STATE
-    // ========================================================
-
-    dutyActive:
-      false,
-
-    status:
-      "ENDED",
-
-    sessionId:
-      "",
-
-    // ========================================================
-    // 📏 RESET LIVE TELEMETRY
-    // ========================================================
-
-    speed:
-      0,
-
-    patrolPointCount:
-      0,
-
-    distanceCoveredKm:
-      0,
-
-    distanceCoveredMeters:
-      0,
-
-    // ========================================================
-    // 🕐 END INFORMATION
-    // ========================================================
-
-    updatedAt:
-      window.fb.serverTimestamp(),
-
-    lastDutyEnd:
-      new Date().toISOString(),
-
-    // ========================================================
-    // 🧹 REMOVE OLD DUTY PROFILE POSITION
-    // ========================================================
-
-    range:
-      window.fb.deleteField(),
-
-    division:
-      window.fb.deleteField(),
-
-    lat:
-      window.fb.deleteField(),
-
-    lon:
-      window.fb.deleteField(),
-
-    heading:
-      window.fb.deleteField(),
-
-    turnRate:
-      window.fb.deleteField(),
-
-    accuracy:
-      window.fb.deleteField(),
-
-    location:
-      window.fb.deleteField(),
-
-    timestamp:
-      window.fb.deleteField(),
-
-    time:
-      window.fb.deleteField(),
-
-    lastSeen:
-      window.fb.deleteField()
-
-  },
-
-  {
-    merge: true
-  }
-
-),
- 
       (async () => {
         try {
           if (!sessionId) {
@@ -122127,9 +121934,7 @@ window.fb.setDoc(
 let fullTrack = [];
 
 const cachedPointMap =
-  window.sessionPointCache?.[
-    sessionId
-  ];
+  endingPointMap;
 
 if(
   cachedPointMap &&
@@ -122690,8 +122495,9 @@ console.log(
     "✅ FINAL ANALYTICS FLUSH COMPLETE"
   );
 
-} catch (err) {
+  } catch (err) {
 
+  reportingFailures.push(err);
   console.error(
     "❌ FINAL ANALYTICS FLUSH FAILED",
     err
@@ -122793,8 +122599,7 @@ console.log(
   distanceKm.toFixed(2),
   "km"
 );
-const endedAt =
-  Date.now();
+// endedAt was captured before lifecycle closure, not after reporting.
 console.log(
   "🕐 DUTY ENDED:",
   new Date(endedAt).toISOString()
@@ -122979,6 +122784,7 @@ console.log(
 
 if(!kmlUrl){
 
+  reportingFailures.push(new Error("KML was not generated"));
   console.error(
     "KML RETURNED NULL"
   );
@@ -123062,6 +122868,7 @@ try{
 
 }
 catch(distanceAccountingErr){
+  reportingFailures.push(distanceAccountingErr);
 
   console.error(
     "❌ AUTHORITATIVE DISTANCE ACCOUNTING FAILED:",
@@ -123158,106 +122965,19 @@ console.log(
 // DUTY ENDED message.
 // ============================================================
 
-sendDutyReportToAppsScript(
+await sendDutyReportToAppsScript(
   dutyEndTelegramData
 )
 .catch(err => {
 
+  reportingFailures.push(err);
   console.error(
     "❌ Duty End Telegram failed",
     err
   );
 
 });
-// ============================================================
-// 🔥 PATROL TRACK FINAL STATUS FALLBACK
-// ------------------------------------------------------------
-// NORMAL SUCCESS:
-//     commitAuthoritativeSessionDistance()
-//             ↓
-//     patrol_tracks is already finalized
-//             ↓
-//     NO SECOND WRITE
-//
-// FAILURE:
-//     If authoritative accounting did not succeed,
-//     preserve the old safety behaviour with ONE fallback write.
-//
-// IMPORTANT:
-//     This is NOT executed during the normal successful path.
-// ============================================================
-
-if(
-    !distanceAccountingApplied
-){
-
-    try{
-
-        console.warn(
-            "⚠ DISTANCE ACCOUNTING FAILED — " +
-            "FINAL PATROL STATUS FALLBACK"
-        );
-
-
-        await window.fb.updateDoc(
-
-            window.fb.doc(
-                window.db,
-                "patrol_tracks",
-                sessionId
-            ),
-
-            {
-                dutyActive:
-                    false,
-
-                status:
-                    "ENDED",
-
-                endedAt:
-                    endedAt,
-
-                updatedAt:
-                    endedAt,
-
-                // =================================================
-                // 📏 PRESERVE FINAL DISTANCE
-                // =================================================
-
-                distanceKm:
-                    finalDistanceKm,
-
-                distanceSource:
-                    finalDistanceSource,
-
-                // =================================================
-                // 🔴 ACCOUNTING STILL PENDING
-                // -------------------------------------------------
-                // The duty is ended, but the authoritative monthly
-                // accounting did not complete.
-                // =================================================
-
-                distanceAccountingPending:
-                    true
-            }
-
-        );
-
-    }
-    catch(
-        finalStatusErr
-    ){
-
-        console.error(
-            "❌ FINAL PATROL STATUS FALLBACK FAILED:",
-            finalStatusErr
-        );
-
-    }
-
-}
-
-
+// Lifecycle closure already committed. Reporting must never rewrite duty state or endedAt.
 // ============================================================
 // 🧹 CLEAR REALTIME PERFORMANCE TRACK CACHE
 // ============================================================
@@ -123265,59 +122985,36 @@ if(
 
 
         } catch (err) {
-          console.error("❌ History write failed", err);
+          console.error("❌ End Duty reporting failed", err);
+          throw err;
         }
       })()
     ])
 .then(results => {
 
-  // ==========================================================
-  // 🧹 SESSION CACHE CLEANUP
-  // ==========================================================
-
-  if(
-    window.sessionTrackCache
-  ){
-
-    delete window.sessionTrackCache[
-      sessionId
-    ];
-
+  for (const result of results) {
+    if (result.status === 'rejected') reportingFailures.push(result.reason);
+    else if (result.value == null || result.value?.error || result.value?.success === false) {
+      // The report branch resolves undefined on success; the backend must acknowledge its result.
+      if (result === results[0]) reportingFailures.push(new Error('Duty register update was not acknowledged'));
+    }
   }
-
-  // ==========================================================
-  // 🔥 HISTORY FLUSH COMPLETE
-  // ==========================================================
-
-  window.historyFlushInProgress =
-    false;
-
-
-  window.lastTrackPoint =
-    null;
-
-  // ==========================================================
-  // 🔥 FINALIZE SESSION
-  // ==========================================================
-
-  finalizeSessionLifecycle();
-
-  // ==========================================================
-  // 🔄 RESET SESSION ANALYTICS
-  // ==========================================================
-
-  window.sessionVisitedGrids =
-    new Set();
-
-  window.newMonthlyCellIds =
-    new Set();
-
-  window.newMonthlyCompartmentIds =
-    new Set();
-
-  window.newMonthlyGridsCaptured =
-    0;
-
+  const ownsCurrentState = !window.currentSessionId || window.currentSessionId === sessionId;
+  if (ownsCurrentState) {
+    window.historyFlushInProgress = false;
+    window.lastTrackPoint = null;
+    window.sessionVisitedGrids = new Set();
+    window.newMonthlyCellIds = new Set();
+    window.newMonthlyCompartmentIds = new Set();
+    window.newMonthlyGridsCaptured = 0;
+  }
+  if (!reportingFailures.length && window.sessionTrackCache) delete window.sessionTrackCache[sessionId];
+  recordEndDutyReportState(endingContext, reportingFailures.length ? 'RETRY_REQUIRED' : 'COMPLETE', reportingFailures);
+  if (reportingFailures.length) {
+    showToast('⚠️ Duty ended. Report incomplete; retry required. GPS history was preserved.');
+    console.error('End Duty report retry required for session', sessionId, reportingFailures);
+    return;
+  }
   // ==========================================================
   // 🗺️ ONLY USER-FACING RESULT
   // ==========================================================
@@ -123352,15 +123049,30 @@ if(
   );
 
 })    .catch(err => {
+      reportingFailures.push(err);
+      recordEndDutyReportState(endingContext, "RETRY_REQUIRED", reportingFailures);
+      showToast("⚠️ Duty ended. Report incomplete; retry required.");
       console.error("❌ End duty background sync failed", err);
     });
 
   } catch (err) {
     console.error("❌ Error:", err);
-    alert("❌ " + (err?.message || err));
+    if (lifecycleClosed && endingContext) {
+      recordEndDutyReportState(endingContext, 'RETRY_REQUIRED', [err]);
+      alert('Duty ended, but report processing failed: ' + (err?.message || err));
+    } else {
+      alert('End Duty failed or could not be confirmed. Retry the same session: ' + (err?.message || err));
+    }
   } finally {
+    if (ownsEndDutyLock) {
+      window.endDutyInProgress = false;
+      window.endDutyClosureInProgress = false;
+      if (lifecycleClosed && typeof autoShowEndDuty === "function") {
+        Promise.resolve().then(() => autoShowEndDuty()).catch(err => console.warn("Duty status refresh failed", err));
+      }
+    }
     const btn = document.getElementById("confirmEndDutyBtn") || document.querySelector("#confirmEndDutyToastBtn")?.parentElement?.parentElement?.parentElement?.querySelector("button:last-child");
-    if (btn) {
+    if (btn && ownsEndDutyLock) {
       btn.innerHTML = "✅ SUBMIT & END DUTY";
       btn.disabled = false;
     }
@@ -135498,6 +135210,10 @@ async function startDuty(event) {
     }
 
     // 🔒 PREVENT DOUBLE CLICK
+    if (window.endDutyInProgress === true) {
+      alert('End Duty is still closing or processing its report. Please wait.');
+      return;
+    }
     if (startDutySubmitting) {
       console.warn("⛔ Duplicate startDuty blocked");
       console.groupEnd();
