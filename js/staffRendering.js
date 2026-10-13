@@ -4,6 +4,7 @@
     const indexes = new WeakMap(), groups = new Map(), sessions = new Map();
     const fastPending = new Map(), fastRunning = new Map(), fastQueue = [];
     const historyPending = new Set(), fastSeeds = new Map();
+    const acceptedPositions = new Map(), maxClockSkewMs = 2 * 60 * 1000;
     // Opt-in local diagnostics only. No telemetry, identifiers, or data are transmitted.
     const diagnostic = w.location?.search && new URLSearchParams(w.location.search).get('staffStartup') === '1';
     const stages = {T0: 0}, records = new Map(), longTasks = [];
@@ -93,7 +94,7 @@
         // Match processPatrolSessionSnapshot's authoritative time normalization.
         const raw = p?.time ?? p?.timestamp ?? '';
         if (typeof raw === 'string') {
-            const parsed = Date.parse(raw);
+            const parsed = /^\d+$/.test(raw) ? Number(raw) : Date.parse(raw);
             return Number.isFinite(parsed) ? parsed : 0;
         }
         if (typeof raw?.toDate === 'function') {
@@ -103,9 +104,12 @@
     }
     function valid(p, id) {
         const lat = Number(p?.lat), lon = Number(p?.lon);
+        const fixTime = time(p), sessionStart = Number(id.match(/_(\d{13})$/)?.[1] || 0);
         return !!p && String(p.sessionId || id).trim() === id &&
             Number.isFinite(lat) && Number.isFinite(lon) && lat !== 0 && lon !== 0 &&
-            Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+            Math.abs(lat) <= 90 && Math.abs(lon) <= 180 &&
+            fixTime > 0 && fixTime <= Date.now() + maxClockSkewMs &&
+            (!sessionStart || fixTime >= sessionStart);
     }
     function newer(p, pid, entry) {
         return !entry.point || time(p) > time(entry.point) ||
@@ -148,9 +152,18 @@
     }
     function latest(id) {
         id = String(id || '').trim();
-        const entry = typeof w.getLiveStaffPointForSession === 'function' ? null : index(id);
-        const p = typeof w.getLiveStaffPointForSession === 'function'
-            ? w.getLiveStaffPointForSession(id) : entry?.point;
+        if (!owner(id)) { acceptedPositions.delete(id); ungroup(id); return null; }
+        const entry = index(id), patrol = entry?.point;
+        const live = w.getLiveStaffPointForSession?.(id);
+        let p = valid(live, id) ? live : null;
+        if (valid(patrol, id) && (!p || time(patrol) > time(p)))
+            p = {...patrol, id: String(patrol.id || entry.pointId)};
+        const accepted = acceptedPositions.get(id);
+        // A history replay, deletion or conflicting equal-time fix cannot rewind the UI.
+        if (accepted && (!p || time(p) < time(accepted) ||
+            (time(p) === time(accepted) &&
+             (Number(p.lat) !== Number(accepted.lat) || Number(p.lon) !== Number(accepted.lon))))) p = accepted;
+        if (p) acceptedPositions.set(id, {...p, sessionId: id});
         group(id, p);
         return p ? {...p, id: String(p.id || entry?.pointId || ''), sessionId: id} : null;
     }
@@ -171,8 +184,8 @@
                 entry.point = p; entry.pointId = pid;
             }
         }
-        group(id, entry.point);
-        if (!entry.point && owner(id)) {
+        const selected = latest(id);
+        if (!selected && owner(id)) {
             const name = key(owner(id)), marker = w.staffMarkers?.[name];
             if (marker?.__staffSession === id) { marker.remove(); delete w.staffMarkers[name]; }
             w.staffLocationStates ??= Object.create(null);
@@ -430,6 +443,7 @@
         return selected;
     }
     function release(id) {
+        acceptedPositions.delete(id);
         ungroup(id); fastPending.delete(id); historyPending.delete(id); fastSeeds.delete(id);
         for (let i = fastQueue.length - 1; i >= 0; i--) if (fastQueue[i].id === id) fastQueue.splice(i, 1);
         for (const [name, value] of Object.entries(w.staffLocationStates || {}))

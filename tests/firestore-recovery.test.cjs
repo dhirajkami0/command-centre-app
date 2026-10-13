@@ -18,9 +18,9 @@ if(require.main===module)(async()=>{
  assert(recovery.allowStaff());c.staffUnsubscribe=recovery.listenStaff({},()=>{});
  for(let i=0;i<100;i++)assert.equal(recovery.allowStaff(),false);assert.equal(subscriptions,1);
  error({code:'resource-exhausted'});assert.equal(c.staffListenerActive,false);assert.equal(unsubscribes,1);
- await tick(59999);assert.equal(recovery.allowStaff(),false);await tick(1);assert(recovery.allowStaff());
+ await tick(59999);assert.equal(recovery.allowStaff(),false);await tick(1);assert.equal(recovery.allowStaff(),false,'Automatic retry owns the singleton');
  recovery.listenStaff({},()=>{});snapshot({metadata:{fromCache:true}});error({code:'resource-exhausted'});
- assert.equal(recovery.report().failures,2);await tick(120000);assert(recovery.allowStaff());recovery.listenStaff({},()=>{});error({code:'resource-exhausted'});
+ assert.equal(recovery.report().failures,2);await tick(120000);assert.equal(recovery.allowStaff(),false,'Automatic retry owns the singleton');recovery.listenStaff({},()=>{});error({code:'resource-exhausted'});
  await tick(999999);assert.equal(recovery.allowStaff(),false,'Three failures pause automatic attempts');
  c.userProfile={cleanName:'OTHER SYNTHETIC',role:'STAFF',range:'A'};assert(recovery.allowStaff());recovery.listenStaff({},()=>{});error({code:'permission-denied'});
  await tick(999999);assert.equal(recovery.allowStaff(),false);c.userProfile.range='B';assert(recovery.allowStaff());
@@ -37,7 +37,7 @@ if(require.main===module)(async()=>{
  }
  const boundedReads=reads;await assert.rejects(recovery.profileSnapshot('staff_profiles','quota-fixture',{},7000));assert.equal(reads,boundedReads,'Profile quota recovery has a three-failure budget');
  recovery.stop();assert(recovery.allowStaff());recovery.listenStaff({},()=>{});error({code:'unavailable'});
- await tick(14999);assert.equal(recovery.allowStaff(),false);await tick(1);assert(recovery.allowStaff());
+ await tick(14999);assert.equal(recovery.allowStaff(),false);await tick(1);assert.equal(recovery.allowStaff(),false,'Automatic retry owns the singleton');
  recovery.listenStaff({},()=>{});snapshot({metadata:{fromCache:false}});assert.equal(recovery.report().failures,0);
  assert.equal(recovery.classify({code:'firestore/unavailable'}),'unavailable');assert.equal(recovery.classify(new Error('PROFILE_QUERY_TIMEOUT')),'timeout');
  recovery.profileUnavailable();assert.match(c.label.textContent,/INTERNET ONLINE/);assert.equal(c.userProfile.range,'C');

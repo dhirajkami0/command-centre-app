@@ -82961,12 +82961,16 @@ window.applyLiveStaffGps = function(raw,key){
   const lat=Number(raw.lat),lon=Number(raw.lon);
   if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180||(lat===0&&lon===0))return false;
   const time=window.StaffRendering?.pointTime({time:raw.gpsTime??raw.time});
-  if(!Number.isFinite(time)||time<=0)return false;
+  if(!Number.isFinite(time)||time<=0||time>Date.now()+2*60*1000)return false;
   // Existing session IDs end in duty-start milliseconds; retained prior-duty GPS is not current.
   const sessionStart=Number(id.match(/_(\d{13})$/)?.[1]||0);
   if(sessionStart && time<sessionStart)return false;
   const old=staff.__liveGpsPoint;
-  if(old?.sessionId===id && time<old.time)return false;
+  if(old?.sessionId===id && old.time<=Date.now()+2*60*1000 && (time<old.time ||
+      (time===old.time && (lat!==Number(old.lat)||lon!==Number(old.lon)))))return false;
+  const selected=window.StaffRendering?.latest(id);
+  if(selected && time===window.StaffRendering.pointTime(selected) &&
+      (lat!==Number(selected.lat)||lon!==Number(selected.lon)))return false;
   const point={...raw,cleanName:key,id:'live:'+id+':'+time,sessionId:id,lat,lon,time};
   staff.__liveGpsPoint=point;
   if(window.liveStaffCache?.[key])window.liveStaffCache[key].__liveGpsPoint=point;
