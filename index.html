@@ -3847,6 +3847,7 @@ function(
         polyline.setLatLngs(
             latLngs
         );
+        polyline.__ggStaffTrackSessionId = sessionId;
 
 
         // ====================================================
@@ -3882,7 +3883,7 @@ function(
             points.length,
             "points"
         );
-
+        return polyline;
 
         return polyline;
     }
@@ -11437,6 +11438,7 @@ setTimeout(() => {
         serverTimestamp,
 
         getDocs,
+        getDocsFromServer,
 
         getDoc,
 
@@ -11568,6 +11570,7 @@ setTimeout(() => {
         serverTimestamp,
 
         getDocs,
+        getDocsFromServer,
 
         getDoc,
 
@@ -13804,7 +13807,15 @@ async function notifyAndroidDuty(
         return false;
       }
       const response = await window.Android.stopSession(endingId);
-      const ack = typeof response === 'string' ? JSON.parse(response) : response;
+      let ack = typeof response === 'string' ? JSON.parse(response) : response;
+      if (ack?.sessionId === endingId && ack?.requested === true && typeof window.Android.getSessionStopStatus==='function') {
+        for (let attempt=0;attempt<20 && ack.stopped!==true;attempt++) {
+          await new Promise(resolve=>setTimeout(resolve,250));
+          const status=window.Android.getSessionStopStatus(endingId);
+          ack=typeof status==='string'?JSON.parse(status):status;
+          if (ack?.sessionId!==endingId) return false;
+        }
+      }
       return ack?.sessionId === endingId && ack?.stopped === true;
     }
 
@@ -16994,91 +17005,11 @@ function clearMonthHistory(){
 // 📜 PROCESS HISTORY TRACK
 // ======================================
 
-async function processHistoryTrack(
-  rawCoords,
-  sessionId,
-  authoritativeDistanceKm = null
-){
-  console.log(
-    "PROCESS HISTORY TRACK CALLED"
-  );
-
-  try{
-
-    if(
-      !Array.isArray(rawCoords) ||
-      rawCoords.length < 2
-    ){
-      console.warn(
-        "❌ Not enough track points"
-      );
-      return;
-    }
-
-    const coords =
-
-      rawCoords
-      .map(p => [
-
-        Number(p.lng),
-        Number(p.lat)
-
-      ])
-      .filter(pt =>
-
-        Number.isFinite(pt[0]) &&
-        Number.isFinite(pt[1])
-
-      );
-
-    if(coords.length < 2){
-
-      console.warn(
-        "❌ No valid coordinates"
-      );
-
-      return;
-    }
-
-    console.log(
-      "📍 Track points:",
-      coords.length
-    );
-
-    const line = turf.lineString(
-      coords
-    );
-
-    console.log(
-      "📤 Sending to appendTrackToGeometries"
-    );
-
-    console.log(
-  "USER PROFILE",
-  window.userProfile
-);
-await appendTrackToGeometries(
-  line,
-  {
-    sessionId
-  }
-);
-
-    console.log(
-      "✅ History processing complete"
-    );
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ processHistoryTrack",
-      err
-    );
-
-  }
-
+async function processHistoryTrack(rawCoords, sessionId, authoritativeDistanceKm=null, identity=null, monthKey=null) {
+  const segments=dutySegments(rawCoords).filter(s=>s.length>=2).map(s=>s.map(p=>[Number(p.lng),Number(p.lat)]));
+  if (!segments.length) return;
+  const line={type:'Feature',geometry:{type:'MultiLineString',coordinates:segments},coordinateOrder:'LNG_LAT'};
+  await appendTrackToGeometries(line,{sessionId,authoritativeDistanceKm,identity,monthKey});
 }    // ======================================
 // 📜 APPEND INTO GEOMETRY HISTORY
 // ======================================
@@ -20079,7 +20010,10 @@ const authoritativeDistanceKm = options?.authoritativeDistanceKm ?? null;
   }
 
   if (!simplifiedLine?.geometry?.coordinates) return;
-  const rawCoords = simplifiedLine.geometry.coordinates;
+  const sourceSegments = simplifiedLine.geometry.type==='MultiLineString'
+    ? simplifiedLine.geometry.coordinates : [simplifiedLine.geometry.coordinates];
+  const rawCoords=sourceSegments.flat();
+  const reportProfile=options.identity || window.userProfile;
 
   // 1. COORDINATE ORDER NORMALIZATION
   let incomingOrder = simplifiedLine.coordinateOrder;
@@ -20108,7 +20042,7 @@ const authoritativeDistanceKm = options?.authoritativeDistanceKm ?? null;
   try {
     // 2. STAGE 1: TRANSACTIONAL CREATION
     let existingData = null;
-    const d = new Date();
+    const d = options.monthKey ? new Date(options.monthKey.replace("_","-")+"-15T12:00:00") : new Date();
     const fallbackMonthKey = `${d.getFullYear()}_${String(d.getMonth() + 1).padStart(2, "0")}`;
 
     await window.fb.runTransaction(window.db, async (transaction) => {
@@ -20117,12 +20051,12 @@ const authoritativeDistanceKm = options?.authoritativeDistanceKm ?? null;
         transaction.set(targetDocRef, {
           sessionId: sessionId,
           uid: window.fb.auth?.currentUser?.uid || "Unknown",
-          staffName: String(window.userProfile?.cleanName || "Unknown").trim(),
-          phone: String(window.userProfile?.phone || "").trim(),
-          division: normalizeDivision(window.userProfile?.division || "BTR_W"),
-          range: String(window.userProfile?.range || "").trim(),
-          beat: String(window.userProfile?.beat || "").trim(),
-          role: String(window.userProfile?.role || "").trim().toUpperCase(),
+          staffName: String(reportProfile?.cleanName || "Unknown").trim(),
+          phone: String(reportProfile?.phone || "").trim(),
+          division: normalizeDivision(reportProfile?.division || "BTR_W"),
+          range: String(reportProfile?.range || "").trim(),
+          beat: String(reportProfile?.beat || "").trim(),
+          role: String(reportProfile?.role || "").trim().toUpperCase(),
           monthKey: fallbackMonthKey,
           bbox: { minLat, minLng, maxLat, maxLng },
           coordinateOrder: "LAT_LNG",
@@ -20142,9 +20076,9 @@ const authoritativeDistanceKm = options?.authoritativeDistanceKm ?? null;
     }
 
     // 3. AUTHORITY CONTEXT
-    const effectiveRange = String(isRecoveryRun ? (existingData?.range || "") : (window.userProfile?.range || "")).trim();
-    const effectiveDivision = normalizeDivision(isRecoveryRun ? (existingData?.division || "") : (window.userProfile?.division || ""));
-    const userRole = String(isRecoveryRun ? (existingData?.role || "") : (window.userProfile?.role || "")).trim().toUpperCase();
+    const effectiveRange = String(isRecoveryRun ? (existingData?.range || "") : (reportProfile?.range || "")).trim();
+    const effectiveDivision = normalizeDivision(isRecoveryRun ? (existingData?.division || "") : (reportProfile?.division || ""));
+    const userRole = String(isRecoveryRun ? (existingData?.role || "") : (reportProfile?.role || "")).trim().toUpperCase();
 
     console.log(
   "🔍 Authority Context",
@@ -20189,7 +20123,9 @@ else if (
 }
     // 4. GEOMETRIC CLIPPING
     const geoJsonReader = new jsts.io.GeoJSONReader();
-    const lineGeom = geoJsonReader.read({ type: "LineString", coordinates: canonicalLngLatCoords });
+    const canonicalSegments=sourceSegments.map(seg=>incomingOrder==='LAT_LNG'
+      ? seg.map(c=>[Number(c[1]),Number(c[0])]) : seg.map(c=>[Number(c[0]),Number(c[1])]));
+    const lineGeom = geoJsonReader.read({type:'MultiLineString',coordinates:canonicalSegments});
     
    const embeddedTracksMap = {};
 
@@ -20230,9 +20166,7 @@ function calculateDistanceKm(coords){
 }
 
 const fallbackTotalDistanceKm =
-  calculateDistanceKm(
-    canonicalLngLatCoords
-  );
+  canonicalSegments.reduce((sum,seg)=>sum+calculateDistanceKm(seg),0);
 
 const totalDistanceKm =
   Number.isFinite(
@@ -20444,7 +20378,7 @@ await window.fb.updateDoc(
       ),
 
     totalDistanceKm,
-
+    rawTrackSegmentsEncoded:canonicalSegments.map(seg=>polyline.encode(seg)),
     clippedDistanceKm,
 
     clipStatus: "SUCCESS",
@@ -20483,6 +20417,7 @@ await window.fb.updateDoc(
     try {
       await window.fb.updateDoc(targetDocRef, { clipStatus: "FAILED_CRASHED", updatedAt: window.fb.serverTimestamp() });
     } catch(dbErr) {}
+    throw err;
   } finally {
     console.groupEnd();
   }
@@ -21626,9 +21561,11 @@ async function updateMonthlyAnalyticsRebuild(
 
     sessionCellVisits,
 
-    sessionDistanceMeters
+    sessionDistanceMeters, distanceSegments = null, detached = false
 
-){  // ============================================================
+){
+ const sessionState=detached?{}:window;
+  // ============================================================
   // PURPOSE
   //
   // Update ONE compartment/month analytics document.
@@ -22676,7 +22613,22 @@ for(
 // Repeated flushes overwrite, never accumulate.
 // ====================================================
 
-const existingSessionDistances =
+const distanceContributions={...(existing.distanceContributions || {})};
+ let deduplicatedDistances=null;
+ if (Array.isArray(distanceSegments)) {
+   deduplicatedDistances={};
+   for (const segment of distanceSegments) {
+     const staff=String(segment.staffName || '').trim().toUpperCase(), sid=String(segment.sessionId || '').trim();
+     const meters=Number(segment.distanceMeters);
+     if (!staff || !sid || !Number.isFinite(meters) || meters<0) continue;
+     const key=JSON.stringify([staff,sid,segment.timestamp,segment.fromLat,segment.fromLon,segment.toLat,segment.toLon]);
+     if (distanceContributions[key]) continue;
+     distanceContributions[key]=true;
+     const sessionKey=staff+'|'+sid;
+     deduplicatedDistances[sessionKey]=(deduplicatedDistances[sessionKey] || 0)+meters;
+   }
+ }
+ const existingSessionDistances =
 
     (
         existing.sessionDistances &&
@@ -22700,7 +22652,7 @@ const suppliedSessionDistances =
         typeof sessionDistanceMeters === "object" &&
         !Array.isArray(sessionDistanceMeters)
     )
-    ? sessionDistanceMeters
+    ? (deduplicatedDistances || sessionDistanceMeters)
     : {};
 
 for(
@@ -22755,6 +22707,7 @@ const nextDistance =
           // ====================================================
 
           const analytics = {
+            distanceContributions,
 
             ...existing,
 
@@ -22913,7 +22866,7 @@ previousCoveredCells:
     // visitSessions is the authoritative duplicate protection.
     // ==========================================================
 
-    window.sessionVisitedGrids ??=
+    sessionState.sessionVisitedGrids ??=
       new Set();
 
 
@@ -22926,7 +22879,7 @@ previousCoveredCells:
       )
     ){
 
-      window.sessionVisitedGrids.add(
+      sessionState.sessionVisitedGrids.add(
 
         `${monthKey}::${gridId}::${staffSessionKey}`
 
@@ -22939,7 +22892,7 @@ previousCoveredCells:
     // NEW MONTHLY CELL IDS
     // ==========================================================
 
-    window.newMonthlyCellIds ??=
+    sessionState.newMonthlyCellIds ??=
       new Set();
 
 
@@ -22948,7 +22901,7 @@ previousCoveredCells:
       of touchedCells
     ){
 
-      window.newMonthlyCellIds.add(
+      sessionState.newMonthlyCellIds.add(
 
         `${gridId}_${cellId}`
 
@@ -22966,11 +22919,11 @@ previousCoveredCells:
         ?.isFirstVisitThisMonth
     ){
 
-      window.newMonthlyCompartmentIds ??=
+      sessionState.newMonthlyCompartmentIds ??=
         new Set();
 
 
-      window.newMonthlyCompartmentIds.add(
+      sessionState.newMonthlyCompartmentIds.add(
         gridId
       );
 
@@ -22981,15 +22934,15 @@ previousCoveredCells:
     // SESSION CONTRIBUTION COUNTERS
     // ==========================================================
 
-    window.sessionNewMonthlyCellCount ??=
+    sessionState.sessionNewMonthlyCellCount ??=
       0;
 
 
-    window.sessionNewMonthlyCompartmentCount ??=
+    sessionState.sessionNewMonthlyCompartmentCount ??=
       0;
 
 
-    window.sessionNewMonthlyCellCount +=
+    sessionState.sessionNewMonthlyCellCount +=
 
       Number(
         transactionResult
@@ -23002,7 +22955,7 @@ previousCoveredCells:
         ?.isFirstVisitThisMonth
     ){
 
-      window.sessionNewMonthlyCompartmentCount++;
+      sessionState.sessionNewMonthlyCompartmentCount++;
 
     }
 
@@ -90140,14 +90093,16 @@ if (normalizedSessionId && cellId) {
     }
 
 }
-async function flushAnalyticsBuffer(){
+async function flushAnalyticsBuffer(reportContext = null){
+  const detached=!!reportContext;
+  const bufferOwner=detached ? {analyticsBuffer:reportContext.buffer} : window;
 
   // ============================================================
   // 🔒 PREVENT OVERLAPPING FLUSHES
   // ============================================================
 
   if(
-    window.analyticsFlushRunning
+    !detached && window.analyticsFlushRunning
   ){
 
     console.log(
@@ -90158,8 +90113,7 @@ async function flushAnalyticsBuffer(){
   }
 
 
-  window.analyticsFlushRunning =
-    true;
+  if (!detached) window.analyticsFlushRunning=true;
 
 
   // ============================================================
@@ -90179,8 +90133,7 @@ async function flushAnalyticsBuffer(){
     // MONTH KEY
     // ==========================================================
 
-    const now =
-      new Date();
+    const now = reportContext?.monthKey ? new Date(reportContext.monthKey.replace("_","-")+"-15T12:00:00") : new Date();
 
 
     const monthKey =
@@ -90203,15 +90156,15 @@ async function flushAnalyticsBuffer(){
     // We detach the current buffer before writing.
     //
     // Any GPS arriving WHILE this flush is running will therefore
-    // be written into a fresh window.analyticsBuffer and cannot
+    // be written into a fresh bufferOwner.analyticsBuffer and cannot
     // be accidentally deleted when this flush finishes.
     // ==========================================================
 
     const flushingBuffer =
-      window.analyticsBuffer || {};
+      bufferOwner.analyticsBuffer || {};
 
 
-    window.analyticsBuffer = {};
+    bufferOwner.analyticsBuffer = {};
 
 
     const entries =
@@ -90249,11 +90202,11 @@ async function flushAnalyticsBuffer(){
       }
 
 
-      window.analyticsBuffer ??= {};
+      bufferOwner.analyticsBuffer ??= {};
 
 
       const existing =
-        window.analyticsBuffer[
+        bufferOwner.analyticsBuffer[
           gridId
         ];
 
@@ -90266,7 +90219,7 @@ async function flushAnalyticsBuffer(){
         !existing
       ){
 
-        window.analyticsBuffer[
+        bufferOwner.analyticsBuffer[
           gridId
         ] = data;
 
@@ -90475,7 +90428,7 @@ if(
       }
 
 
-      window.analyticsBuffer[
+      bufferOwner.analyticsBuffer[
         gridId
       ] = existing;
     }
@@ -90831,8 +90784,9 @@ const transactionResult =
 
     sessionCellVisits,
 
-    sessionDistanceMeters
-
+    sessionDistanceMeters,
+    Array.isArray(data.distanceSegments) ? data.distanceSegments : [],
+    detached
   );
 
 
@@ -90906,7 +90860,7 @@ successfulGridFlushes++;
 
         remainingGrids:
           Object.keys(
-            window.analyticsBuffer || {}
+            bufferOwner.analyticsBuffer || {}
           ).length,
 
        
@@ -90963,6 +90917,7 @@ console.log(
       );
     }
 
+    if (detached && Object.keys(bufferOwner.analyticsBuffer || {}).length) throw Error("Analytics has unacknowledged grids");
   }
 
   catch(err){
@@ -90971,7 +90926,7 @@ console.log(
       "❌ flushAnalyticsBuffer",
       err
     );
-
+    if (detached) throw err;
   }
 
   finally {
@@ -90980,8 +90935,7 @@ console.log(
     // ALWAYS RELEASE LOCK
     // ==========================================================
 
-    window.analyticsFlushRunning =
-      false;
+    if (!detached) window.analyticsFlushRunning=false;
   }
 }
 
@@ -121095,7 +121049,17 @@ function captureEndDutyContext(profile) {
   try { pending ||= JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) {}
   const endAtMs = pending?.sessionId === sessionId && Number.isSafeInteger(pending.endAtMs)
     ? pending.endAtMs : Date.now();
-  const context = Object.freeze({staffId, sessionId, endAtMs});
+  const identity = dutyPlain(Object.fromEntries(['cleanName','name','rawName','phone','email','division','range','beat','role','dutyType','compartments']
+    .filter(key=>profile[key]!=null).map(key=>[key,profile[key]])));
+  const observations = String(document.getElementById('ed-obs')?.value || '');
+  let analyticsBuffer;
+  try {analyticsBuffer=dutyPlain(window.analyticsBuffer || {});}
+  catch(error) {console.error('Optional analytics serialization failed; duty closure remains available',error);analyticsBuffer=window.analyticsBuffer || {};}
+  const context = Object.freeze({staffId, sessionId, endAtMs, identity, observations, analyticsBuffer});
+  window.endDutyAnalytics ||= {};
+  window.endDutyAnalytics[sessionId]=context.analyticsBuffer;
+  try {localStorage.setItem('endDutyAnalytics:'+sessionId,JSON.stringify(context.analyticsBuffer));}
+  catch(error) {console.warn('Analytics persistence requires device cache retry',error);}
   window.endDutyClosureRequests ||= {};
   window.endDutyClosureRequests[staffId] = context;
   try { localStorage.setItem(key, JSON.stringify(context)); } catch (err) {
@@ -121136,28 +121100,346 @@ async function closeEndDutySession(context) {
     };
     transaction.update(trackRef, {
       dutyActive:false, status:'ENDED', endedAt:endAtMs, updatedAt:endAtMs,
-      endDutyClosureTelemetry:telemetry, endDutyReportingState:'PENDING'
+      endDutyClosureTelemetry:telemetry, endDutyReportingState:'PENDING',
+      observations:context.observations || '',
+      endDutyReportJob:{version:1,sessionId,staffId,startedAt:track.startedAt,endedAt:endAtMs,
+        identity:{...context.identity,...Object.fromEntries(['cleanName','phone','division','range','beat','role','dutyType','compartments']
+          .filter(key => track[key] != null).map(key => [key,track[key]]))},
+        observations:context.observations || '',
+        // Analytics is persisted separately after closure; only recovery state belongs here.
+        analyticsPending:true,
+        analyticsCacheRequired:context.analyticsCacheRequired===true,
+        expectedPointCount:telemetry.patrolPointCount ?? 0,
+        distanceKm:telemetry.distanceCoveredKm ?? (telemetry.distanceCoveredMeters == null ? null : telemetry.distanceCoveredMeters/1000),
+        state:'PENDING',attempts:0,nextAttemptAt:0,leaseUntil:0}
     });
     transaction.update(liveRef, {
       dutyActive:false, status:'ENDED', sessionId:'', lastEndedSessionId:sessionId,
       speed:0, patrolPointCount:0, distanceCoveredKm:0, distanceCoveredMeters:0,
       updatedAt:window.fb.serverTimestamp(), lastDutyEnd:new Date(endAtMs).toISOString(),
       ...Object.fromEntries(['range','division','lat','lon','heading','turnRate','accuracy',
-        'location','timestamp','time','lastSeen'].map(key => [key, window.fb.deleteField()]))
+        'location','timestamp','time','gpsTime','lastSeen'].map(key => [key, window.fb.deleteField()]))
     });
     return {alreadyEnded:false, endedAt:endAtMs, dutyStartedAt:track.startedAt, telemetry};
   });
 }
 
-function recordEndDutyReportState(context, state, failures = []) {
+function recordEndDutyReportState(context, state, failures = [], reportStage = null) {
   const record = {sessionId:context.sessionId, staffId:context.staffId, endedAt:context.endAtMs,
-    state, failures:failures.map(error => String(error?.message || error)), updatedAt:Date.now()};
+    state, reportStage, failures:failures.map(error => String(error?.message || error)), updatedAt:Date.now()};
   window.endDutyReportStates ||= {};
   window.endDutyReportStates[context.sessionId] = record;
   try { localStorage.setItem('endDutyReport:' + context.sessionId, JSON.stringify(record)); }
   catch (err) { console.warn('Report retry state is available only in this tab', err); }
   return record;
 }
+
+// Session-owned reporting. No GPS listeners or current-session cleanup run here.
+function dutyPlain(value) {
+  return JSON.parse(JSON.stringify(value, (_, v) => v instanceof Set ? [...v] : v));
+}
+async function dutyDeadline(work, ms = 45000) {
+  let timer;
+  try { return await Promise.race([work, new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error('Operation timed out; acknowledgement unverified')), ms);
+  })]); } finally { clearTimeout(timer); }
+}
+function dutyTime(value) {
+  if (value == null || value === '') return NaN;
+  if (typeof value?.toMillis === 'function') return value.toMillis();
+  if (typeof value?.toDate === 'function') return value.toDate().getTime();
+  return Number.isFinite(Number(value)) ? Number(value) : Date.parse(String(value));
+}
+function dutyNormalizePoints(sessionId, sources, startedAt, endedAt) {
+  const fixes = new Map();
+  for (const source of sources) for (const raw of Object.values(source || {})) {
+    if (raw.sessionId && raw.sessionId !== sessionId) continue;
+    if (raw.lat == null || raw.lat === '' || (raw.lon ?? raw.lng) == null || (raw.lon ?? raw.lng) === '') continue;
+    const lat = Number(raw.lat), lng = Number(raw.lon ?? raw.lng), time = dutyTime(raw.time ?? raw.timestamp);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180 ||
+        !Number.isFinite(time) || time < startedAt - 120000 || time > endedAt + 120000) continue;
+    const point = {...raw, lat, lng, time, sessionId, breakTrack:raw.breakTrack === true};
+    const key = String(time);
+    const existing = fixes.get(key);
+    // Equal-time conflicts cannot create a route leg. Choose deterministically.
+    if (!existing || Number(point.accuracy ?? Infinity) < Number(existing.accuracy ?? Infinity) ||
+        (Number(point.accuracy ?? Infinity) === Number(existing.accuracy ?? Infinity) &&
+         `${lat},${lng}` < `${existing.lat},${existing.lng}`)) fixes.set(key, point);
+  }
+  return [...fixes.values()].sort((a,b) => a.time - b.time);
+}
+function dutyFilterRoute(points) {
+  const accepted = [];
+  let interrupted = false;
+  for (const point of points) {
+    const last = accepted[accepted.length - 1];
+    if (last && !point.breakTrack && !interrupted) {
+      const meters = getDistance([last.lat,last.lng],[point.lat,point.lng]) * 1000;
+      const seconds = (point.time - last.time) / 1000;
+      if (seconds <= 0 || !Number.isFinite(meters) || meters > 300 || meters / seconds * 3.6 > 120) {
+        interrupted = true;
+        continue;
+      }
+    }
+    accepted.push({...point, breakTrack:point.breakTrack || interrupted});
+    interrupted = false;
+  }
+  return accepted;
+}
+async function dutyRouteFingerprint(points) {
+  const bytes=new TextEncoder().encode(JSON.stringify(points.map(p=>[p.time,p.lat,p.lng,p.breakTrack===true])));
+  const digest=await crypto.subtle.digest('SHA-256',bytes);
+  return [...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join('');
+}
+function dutySegments(points) {
+  const result = [];
+  for (const point of points) {
+    if (!result.length || point.breakTrack) result.push([]);
+    result[result.length-1].push(point);
+  }
+  return result;
+}
+function dutyRouteDistance(points) {
+  let km = 0;
+  for (let i=1;i<points.length;i++) if (!points[i].breakTrack)
+    km += getDistance([points[i-1].lat,points[i-1].lng],[points[i].lat,points[i].lng]);
+  return km;
+}
+async function dutySaveJob(job, token = null) {
+  if (job.state==='COMPLETE' && (job.registerAck?.sessionId!==job.sessionId ||
+      job.registerAck?.routeOutcome!==job.routeOutcome || !job.historyDone || !job.analyticsDone || !job.distanceDone))
+    throw Error('Mandatory report completion is not verified');
+  const ref = window.fb.doc(window.db,'patrol_tracks',job.sessionId);
+  await window.fb.runTransaction(window.db, async tx => {
+    const snap = await tx.get(ref), parent = snap.data();
+    if (!snap.exists() || parent.cleanName !== job.staffId || parent.status !== 'ENDED' ||
+        parent.dutyActive !== false || parent.endedAt !== job.endedAt) throw Error('Report session ownership/lifecycle changed');
+    if (token && parent.endDutyReportJob?.leaseToken !== token) throw Error('Reporting lease changed');
+    const serializable=dutyPlain(job);
+    if (serializable.analyticsBuffer) {serializable.analyticsPayload=JSON.stringify(serializable.analyticsBuffer);delete serializable.analyticsBuffer;}
+    tx.update(ref,{endDutyReportJob:serializable,endDutyReportingState:job.state});
+  });
+  const stage=job.state==='RETRY_REQUIRED' ? 'RETRY_REQUIRED' : job.registerAck ? 'SHEET_VERIFIED' :
+    (!job.routeOutcome || job.routeOutcome==='ROUTE') && !job.kmlUrl ? 'KML_PENDING' : 'SHEET_PENDING';
+  const previous=window.endDutyReportStates?.[job.sessionId]?.reportStage;
+  recordEndDutyReportState({sessionId:job.sessionId,staffId:job.staffId,endAtMs:job.endedAt},job.state,job.failures || [],stage);
+  if (previous!==stage) showToast(({KML_PENDING:'Duty ended. KML generation/upload pending: ',
+    SHEET_PENDING:'Duty ended. Google Sheet registration pending: ',
+    SHEET_VERIFIED:'Google Sheet registration verified: ',RETRY_REQUIRED:'Duty ended. Reporting requires retry: '})[stage]+job.sessionId);
+}
+async function dutyClaimJob(sessionId) {
+  const ref = window.fb.doc(window.db,'patrol_tracks',sessionId);
+  const token = crypto.randomUUID();
+  return window.fb.runTransaction(window.db, async tx => {
+    const snap = await tx.get(ref), p = snap.data(), job = p?.endDutyReportJob;
+    if (!job || job.version !== 1 || p.status !== 'ENDED' || p.dutyActive !== false ||
+        p.cleanName !== window.userProfile?.cleanName || job.staffId !== p.cleanName ||
+        job.sessionId !== sessionId || job.endedAt !== p.endedAt || job.state === 'COMPLETE') return null;
+    if ((job.leaseUntil || 0) > Date.now() || (job.nextAttemptAt || 0) > Date.now()) return null;
+    const claimed = {...job,state:'PROCESSING',leaseToken:token,leaseUntil:Date.now()+120000,failures:[]};
+    tx.update(ref,{endDutyReportJob:claimed,endDutyReportingState:'PROCESSING'});
+    return claimed;
+  });
+}
+async function dutyReadEndedPoints(job) {
+  const local = await loadPatrolPointsFromIDB(job.sessionId);
+  const ref = window.fb.collection(window.db,'patrol_tracks',job.sessionId,'points');
+  const remote = {};
+  // Two server reads, at most 5 seconds apart. Never interprets an offline cache as complete.
+  for (let pass=0;pass<2;pass++) {
+    const query = window.fb.query(ref,window.fb.orderBy('time','asc'));
+    if (typeof window.fb.getDocsFromServer !== 'function') throw Error('Server-only point read unavailable');
+    const snapshot = await dutyDeadline(window.fb.getDocsFromServer(query));
+    snapshot.forEach(doc => { remote[doc.id] = doc.data(); });
+    if (!pass) await new Promise(resolve => setTimeout(resolve,5000));
+  }
+  const full = dutyNormalizePoints(job.sessionId,[local,remote],job.startedAt,job.endedAt);
+  // If native queue count exceeds reconciled points, retain retry state rather than certify truncation.
+  if (Number(job.expectedPointCount || 0) > full.length) throw Error('Offline GPS synchronization pending');
+  return full;
+}
+function dutyBuildTelegramReport(job) {
+  const s=job.snapshot || {}, identity=job.identity || {};
+  if (!Number.isSafeInteger(job.startedAt) || !Number.isSafeInteger(job.endedAt) || job.endedAt<job.startedAt)
+    throw Error('Telegram requires original captured session timestamps');
+  const number=(...values)=>{for(const value of values) if(value!=null && value!=='' && Number.isFinite(Number(value)) && Number(value)>=0) return Number(value);};
+  const text=(...values)=>values.find(v=>v!=null && String(v).trim()!=='');
+  const date=new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'2-digit',year:'numeric'});
+  const datetime=new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
+  const seconds=Math.round((job.endedAt-job.startedAt)/1000);
+  return {...s,sessionId:job.sessionId,
+    rawName:text(identity.rawName,identity.name,s.staffName,s.staff,identity.cleanName,job.staffId),
+    phone:text(s.phone,identity.phone),division:text(s.division,identity.division),range:text(s.range,identity.range),beat:text(s.beat,identity.beat),
+    dutyType:text(s.dutyType,identity.dutyType),startedAt:job.startedAt,endedAt:job.endedAt,
+    dutyDate:date.format(new Date(job.startedAt)),startedText:datetime.format(new Date(job.startedAt)),endedText:datetime.format(new Date(job.endedAt)),
+    durationText:Math.floor(seconds/3600)+' h '+Math.floor(seconds%3600/60)+' min '+seconds%60+' sec',
+    sessionGridCount:number(s.compartmentsVisited,s.sessionGridCount),sessionCellCount:number(s.uniqueCellsVisited,s.sessionCellCount),
+    areaHa:number(s.visitedHa,s.areaHa),distanceKm:number(s.distanceKm),
+    newMonthlyGridCount:number(s.newMonthlyGridCount),sessionNewMonthlyCellCount:number(s.sessionNewMonthlyCellCount),
+    score:number(s.score),observations:text(job.observations,s.observations),compartmentIds:s.compartmentIds,
+    kmlUrl:job.kmlUrl || s.kmlUrl || '',routeOutcome:job.routeOutcome,
+    kmlInformation:job.routeOutcome && job.routeOutcome!=='ROUTE' ? 'No route KML ('+job.routeOutcome+')' : undefined};
+}
+async function dutyRegister(job) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(),30000);
+  try {
+    const response = await fetch(window.APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'SAVE_PATROL_KML',...job.snapshot,sessionId:job.sessionId,
+        kmlUrl:job.kmlUrl || '',routeOutcome:job.routeOutcome,reportVersion:1}),signal:controller.signal});
+    if (!response.ok) throw Error('Register HTTP '+response.status);
+    const ack = JSON.parse(await response.text());
+    if (ack.success !== true || ack.sessionId !== job.sessionId || ack.routeOutcome !== job.routeOutcome)
+      throw Error(ack.error || 'Register acknowledgement/session/outcome mismatch');
+    return {sessionId:ack.sessionId,row:ack.row ?? null,routeOutcome:ack.routeOutcome};
+  } finally { clearTimeout(timer); }
+}
+async function dutyProcessReport(sessionId) {
+  window.dutyReportFlights ||= new Map();
+  if (window.dutyReportFlights.has(sessionId)) return window.dutyReportFlights.get(sessionId);
+  const flight = (async () => {
+    let job;
+    try {
+      job = await dutyClaimJob(sessionId);
+      if (!job) return;
+      const save = async () => {job.leaseUntil=Date.now()+120000;await dutySaveJob(job,job.leaseToken);};
+      // Optional analytics is serialized after authoritative closure, never in it.
+      if (job.analyticsPending) {
+        let buffer=window.endDutyAnalytics?.[sessionId];
+        if (!buffer) {const raw=localStorage.getItem('endDutyAnalytics:'+sessionId);if(raw) buffer=JSON.parse(raw);}
+        if (!buffer && job.analyticsCacheRequired) buffer=await idbKeyval.get('end_duty_analytics_v1_'+sessionId);
+        if (!buffer) throw Error('Captured analytics unavailable; original device recovery required');
+        const payload=JSON.stringify(buffer);
+        if (payload.length>250000) {
+          await idbKeyval.set('end_duty_analytics_v1_'+sessionId,buffer);
+          job.analyticsCacheRequired=true;job.analyticsPayload='';
+        } else {job.analyticsPayload=payload;job.analyticsCacheRequired=false;}
+        job.analyticsPending=false;await save();
+        localStorage.removeItem('endDutyAnalytics:'+sessionId);
+        delete window.endDutyAnalytics?.[sessionId];
+      }
+      // Before any report side effect, refresh a provisional snapshot on each retry.
+      // Late queued points must not permanently poison a failed first upload.
+      if (job.snapshot && !job.kmlUrl && !job.historyDone && !job.distanceDone && !job.registerAck && !job.analyticsDone) delete job.snapshot;
+      if (!job.snapshot) {
+        const full = await dutyReadEndedPoints(job), clean = dutyFilterRoute(full);
+        const segments = dutySegments(clean).filter(segment => segment.length >= 2);
+        job.routeOutcome = !full.length ? 'NO_GPS' : !segments.length ? 'INSUFFICIENT_ROUTE' : 'ROUTE';
+        const telemetry=full.slice().reverse().find(p=>p.distanceCoveredKm!=null && Number.isFinite(Number(p.distanceCoveredKm)) && Number(p.distanceCoveredKm)>=0);
+        if (telemetry) job.distanceKm=Number(telemetry.distanceCoveredKm);
+        const distance = job.routeOutcome !== 'ROUTE' ? 0 :
+          job.distanceKm != null && Number.isFinite(Number(job.distanceKm)) && Number(job.distanceKm)>=0
+            ? Number(job.distanceKm) : dutyRouteDistance(clean);
+        job.snapshot = dutyPlain(await ggBuildCompletedSessionReportSnapshot(job.sessionId,job.startedAt,
+          job.endedAt,distance,clean.length,clean,ggEndDutyGISSegments(full,clean),job.identity));
+        job.snapshot.monthKey ||= new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit'})
+          .format(new Date(job.endedAt)).replace('-','_');
+        job.snapshot.observations = job.observations;
+        job.snapshot.routeOutcome = job.routeOutcome;
+        // Full tracks stay in IDB/points, not in the parent (Firestore document size limit).
+        // Raw IDB points are retained; never replace them with a filtered route.
+        // Freeze the selected route for idempotent history recovery after upload.
+        // Later queued fixes remain in point history; they cannot rewrite published KML.
+        const routePayload=JSON.stringify(clean);
+        if (routePayload.length<=250000) {job.reportRoutePayload=routePayload;job.reportRouteCacheRequired=false;}
+        else {await idbKeyval.set('end_duty_route_v1_'+job.sessionId,clean);job.reportRouteCacheRequired=true;delete job.reportRoutePayload;}
+        job.pointCount=clean.length;
+        job.routeFingerprint=await dutyRouteFingerprint(clean);
+        job.latePointPolicy={serverReads:2,settleWindowMs:5000,automaticRevision:false,
+          outcome:'Refresh provisional snapshots before upload; freeze uploaded reports and retain late points separately'};
+        await save();
+      }
+      const points = Object.values(await loadPatrolPointsFromIDB(job.sessionId) || {});
+      // After restart the route must be recovered against the original snapshot; never overwrite a good KML.
+      if (job.routeOutcome === 'ROUTE' && !job.kmlUrl) {
+        const full = await dutyReadEndedPoints(job), clean = dutyFilterRoute(full);
+        if (clean.length !== job.pointCount || await dutyRouteFingerprint(clean)!==job.routeFingerprint)
+          throw Error('Late GPS changed report snapshot; explicit revision required');
+        job.kmlUrl = await dutyDeadline(uploadPatrolKML(job.sessionId,clean,job.snapshot.distanceKm,job.snapshot,{uploadOnly:true}));
+        if (!job.kmlUrl) throw Error('KML upload unverified');
+        await save();
+      }
+      // A saved upload URL is not proof that the parent link was acknowledged.
+      if (job.kmlUrl && !job.kmlParentDone) {
+        await window.fb.runTransaction(window.db,async tx=>{
+          const ref=window.fb.doc(window.db,'patrol_tracks',job.sessionId),snap=await tx.get(ref),p=snap.data();
+          if (!snap.exists() || p.cleanName!==job.staffId || p.status!=='ENDED' || p.endedAt!==job.endedAt) throw Error('KML parent ownership changed');
+          tx.update(ref,{kmlUrl:job.kmlUrl});
+        });
+        job.kmlParentDone=true;await save();
+      }
+      let historyFailure=null;
+      try {
+      if (!job.historyDone) {
+        if (job.routeOutcome === 'ROUTE') {
+          const clean = job.reportRoutePayload ? JSON.parse(job.reportRoutePayload) :
+            job.reportRouteCacheRequired ? await idbKeyval.get('end_duty_route_v1_'+job.sessionId) : dutyFilterRoute(await dutyReadEndedPoints(job));
+          if (!clean || await dutyRouteFingerprint(clean)!==job.routeFingerprint) throw Error('Frozen report route unavailable; original device recovery required');
+          await dutyDeadline(processHistoryTrack(clean,job.sessionId,job.snapshot.distanceKm,job.identity,job.snapshot.monthKey));
+        }
+        job.historyDone=true;await save();
+      }
+      } catch (error) {historyFailure=error;}
+      let analyticsFailure=null;
+      try {
+      if (!job.analyticsDone) {
+        const storedAnalytics=job.analyticsCacheRequired ? await idbKeyval.get('end_duty_analytics_v1_'+job.sessionId) : job.analyticsPayload != null ? JSON.parse(job.analyticsPayload || '{}') : job.analyticsBuffer;
+        if (job.analyticsCacheRequired && !storedAnalytics) throw Error('Durable analytics cache unavailable on this device');
+        const buffer = dutyPlain(storedAnalytics || {});
+        for (const data of Object.values(buffer)) for (const key of ['touchedCells','visitSessions','sessionCellVisits','distanceSegmentKeys'])
+          if (Array.isArray(data[key])) data[key]=new Set(data[key]);
+        await dutyDeadline(flushAnalyticsBuffer({buffer,monthKey:job.snapshot.monthKey}));
+        job.analyticsDone=true;await save();
+      }
+      } catch (error) {analyticsFailure=error;}
+      if (!job.distanceDone) {
+        await dutyDeadline(commitAuthoritativeSessionDistance(job.sessionId,job.snapshot.distanceKm,job.endedAt,'session_report'));
+        job.distanceDone=true;await save();
+      }
+      if (!job.registerAck) {job.registerAck=await dutyRegister(job);await save();}
+      if (historyFailure || analyticsFailure) throw historyFailure || analyticsFailure;
+      job.state='COMPLETE';job.leaseUntil=0;job.nextAttemptAt=0;await dutySaveJob(job,job.leaseToken);
+      showToast('Patrol report registered: '+job.sessionId);
+      // Optional notification cannot alter mandatory success.
+      if (!job.telegramDone) {
+        try {await dutyDeadline(sendDutyReportToAppsScript(dutyBuildTelegramReport(job)),30000);
+          job.telegramDone=true;} catch(error) {job.telegramError=String(error.message || error);}
+        try {await dutySaveJob(job,job.leaseToken);} catch(error) {console.warn('Optional notification checkpoint unavailable',error);}
+      }
+    } catch(error) {
+      console.error('Session report retry required',sessionId,error);
+      if (job) {
+        job.state='RETRY_REQUIRED';job.failures=[String(error.message || error)];job.attempts=(job.attempts || 0)+1;
+        job.leaseUntil=0;job.nextAttemptAt=Date.now()+Math.min(300000,5000*2**Math.min(job.attempts,6));
+        try {await dutySaveJob(job,job.leaseToken);} catch(saveError) {console.error('Report lease/checkpoint unverified',saveError);}
+        showToast('Duty remains ended. Report pending retry: '+sessionId);
+      }
+    }
+  })();
+  window.dutyReportFlights.set(sessionId,flight);
+  try {return await flight;} finally {window.dutyReportFlights.delete(sessionId);}
+}
+async function dutyResumeReports() {
+  if (!window.db || !window.fb?.where || !window.userProfile?.cleanName || window.dutyReportDiscovery) return;
+  window.dutyReportDiscovery=true;
+  try {
+    const ref=window.fb.collection(window.db,'patrol_tracks');
+    const rows=await dutyDeadline(window.fb.getDocs(window.fb.query(ref,window.fb.where('cleanName','==',window.userProfile.cleanName))));
+    rows.forEach(doc => {const p=doc.data();if (p.endDutyReportJob?.version===1 && p.status==='ENDED' && p.endDutyReportJob.state!=='COMPLETE')
+      void dutyProcessReport(doc.id);});
+  } catch(error) {console.warn('Report recovery unavailable; will retry',error.message);}
+  finally {window.dutyReportDiscovery=false;}
+}
+if (!window.dutyReportRecoveryTimer) {
+  window.dutyReportRecoveryTimer=setInterval(()=>void dutyResumeReports(),30000);
+  window.addEventListener('online',()=>void dutyResumeReports());
+  window.addEventListener('pageshow',()=>void dutyResumeReports());
+  window.addEventListener('popstate',()=>void dutyResumeReports());
+  window.addEventListener('hashchange',()=>void dutyResumeReports());
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible') void dutyResumeReports();});
+  setTimeout(()=>void dutyResumeReports(),5000);
+}
+
 
 async function submitEndDuty(event) {
   console.group("🚨 submitEndDuty TRIGGERED");
@@ -121316,1865 +121598,58 @@ async function submitEndDuty(event) {
       return;
     }
 
-    // ============================================================
-    // 🔥 SESSION ID
-    // ============================================================
     endingContext = captureEndDutyContext(profile);
-    const sessionId = endingContext.sessionId;
-    const endingPointMap = Object.fromEntries(Object.entries(window.sessionPointCache?.[sessionId] || {})
-      .map(([key, point]) => [key, {...point}]));
-    window.endDutyClosureInProgress = true;
-    let lifecycleResult;
-    try { lifecycleResult = await closeEndDutySession(endingContext); }
-    finally { window.endDutyClosureInProgress = false; }
-    lifecycleClosed = true;
-    const endedAt = lifecycleResult.endedAt;
-    let dutyStartedAt = lifecycleResult.dutyStartedAt;
-    if (lifecycleResult.alreadyEnded) {
-      finalizeSessionLifecycle(sessionId);
-      showToast('Duty already ended. Existing reports and accounting were preserved.');
-      return;
-    }
-    if (!window.currentSessionId || window.currentSessionId === sessionId) window.isDutyActive = false;
-    window.endedDutySessionId = sessionId;
+    const sessionId=endingContext.sessionId;
+    // Preserve RAM before closure can detach the existing GPS listener.
+    const savedPoints=await loadPatrolPointsFromIDB(sessionId);
+    const cachePoints=window.sessionPointCache?.[sessionId] || {};
+    await savePatrolPointsToIDB(sessionId, [...Object.values(savedPoints || {}),...Object.values(cachePoints)]);
+    window.endDutyClosureInProgress=true;
+    let result;
+    try { result=await closeEndDutySession(endingContext); }
+    finally {window.endDutyClosureInProgress=false;}
+    lifecycleClosed=true;
+    const ownsCurrent=!window.currentSessionId || window.currentSessionId===sessionId;
     finalizeSessionLifecycle(sessionId);
+    if (ownsCurrent) {
+      window.isDutyActive=false;
+      // Shared analytics buffers remain owned by the existing live pipeline.
+      window.lastTrackPoint=null;
+      window.sessionVisitedGrids=new Set();
+      window.newMonthlyCellIds=new Set();
+      window.newMonthlyCompartmentIds=new Set();
+      window.__dutyUpdating=false;
+      closeEndDutyForm();updateDutyButton();
+      if (typeof removeStaffFromUI==='function') removeStaffFromUI(profile.cleanName);
+    }
     delete window.endDutyClosureRequests?.[profile.cleanName];
-    try { localStorage.removeItem('endDutyClosureRequest:' + profile.cleanName); } catch (_) {}
-    recordEndDutyReportState(endingContext, 'PENDING');
-    showToast('✅ Duty ended. Processing patrol report...');
-    const androidStopped = await notifyAndroidDuty(false, sessionId, true);
-    if (!androidStopped && window.Android) {
-      showToast('⚠️ Duty ended. Android GPS stop is unconfirmed; native compatibility needs attention.');
-      window.endDutyAndroidStopPending = sessionId;
-      console.warn('Duty closed; Android session-specific stop remains unconfirmed', sessionId);
-    }
-const endedSessionId = String(
-  sessionId || ""
-);
-
-window.endedDutySessionId =
-  endedSessionId;
-
-if(endedSessionId){
-
-  localStorage.setItem(
-    "endedDutySessionId",
-    endedSessionId
-  );
-
-}
-
-console.log(
-  "🔒 END DUTY SESSION LOCKED:",
-  endedSessionId
-);
-
-// ============================================================
-// 🎯 CAPTURE AUTHORITATIVE DISTANCE FROM SESSION CACHE
-// ------------------------------------------------------------
-// PATROL DISTANCE AUTHORITY:
-//
-// patrol_tracks/{sessionId}/points
-//          ↓
-// central patrol listener
-//          ↓
-// sessionPointCache[sessionId]
-//          ↓
-// latest patrol point
-//          ↓
-// distanceCoveredKm / distanceCoveredMeters
-//
-// NO Firestore READ.
-// ============================================================
-
-// ============================================================
-// 🎯 AUTHORITATIVE SESSION DISTANCE
-// ------------------------------------------------------------
-// SOURCE:
-//
-// patrol_tracks/{sessionId}/points
-//          ↓
-// central patrol listener
-//          ↓
-// sessionPointCache[sessionId]
-//          ↓
-// latest timestamped patrol point
-//          ↓
-// distanceCoveredKm / distanceCoveredMeters
-//
-// IMPORTANT:
-// • NO Firestore read
-// • NO second listener
-// • NO profile distance
-// • NO current-browser-user distance
-// • sessionId is the authority
-// ============================================================
-
-const authoritativeDistancePromise =
-    (async () => {
-
-        try {
-
-            const cachedPoints =
-                endingPointMap;
-
-            if(
-                !cachedPoints ||
-                typeof cachedPoints !== "object"
-            ){
-
-                console.warn(
-                    "⚠ END DUTY: sessionPointCache missing",
-                    {
-                        sessionId
-                    }
-                );
-
-                return null;
-            }
-
-
-            // ========================================================
-            // 📦 OBJECT CACHE → ARRAY
-            // ========================================================
-
-            const points =
-                Array.isArray(cachedPoints)
-                    ? [
-                        ...cachedPoints
-                    ]
-                    : Object.values(
-                        cachedPoints
-                    );
-
-
-            if(
-                points.length === 0
-            ){
-
-                console.warn(
-                    "⚠ END DUTY: no cached patrol points",
-                    {
-                        sessionId
-                    }
-                );
-
-                return null;
-            }
-
-
-            // ========================================================
-            // 🕒 ROBUST PATROL POINT TIME
-            // --------------------------------------------------------
-            // Supports:
-            //
-            // timestamp = milliseconds
-            // time      = milliseconds
-            // time      = ISO string
-            // Firestore Timestamp
-            // ========================================================
-
-            function getPatrolPointTimestamp(
-                point
-            ){
-
-                if(
-                    !point ||
-                    typeof point !== "object"
-                ){
-                    return 0;
-                }
-
-
-                const raw =
-                    point.timestamp ??
-                    point.time ??
-                    point.lastSeen ??
-                    null;
-
-
-                if(
-                    raw &&
-                    typeof raw.toMillis ===
-                        "function"
-                ){
-
-                    try{
-
-                        const ms =
-                            raw.toMillis();
-
-                        if(
-                            Number.isFinite(ms)
-                        ){
-                            return ms;
-                        }
-
-                    }
-                    catch(e){}
-                }
-
-
-                if(
-                    raw &&
-                    typeof raw.toDate ===
-                        "function"
-                ){
-
-                    try{
-
-                        const ms =
-                            raw
-                                .toDate()
-                                .getTime();
-
-                        if(
-                            Number.isFinite(ms)
-                        ){
-                            return ms;
-                        }
-
-                    }
-                    catch(e){}
-                }
-
-
-                if(
-                    typeof raw === "number" &&
-                    Number.isFinite(raw) &&
-                    raw > 0
-                ){
-
-                    // Seconds → milliseconds
-                    if(
-                        raw < 100000000000
-                    ){
-                        return raw * 1000;
-                    }
-
-                    return raw;
-                }
-
-
-                if(
-                    typeof raw === "string" &&
-                    raw.trim()
-                ){
-
-                    const numeric =
-                        Number(
-                            raw.trim()
-                        );
-
-                    if(
-                        Number.isFinite(numeric) &&
-                        numeric > 0
-                    ){
-
-                        if(
-                            numeric < 100000000000
-                        ){
-                            return numeric * 1000;
-                        }
-
-                        return numeric;
-                    }
-
-
-                    const parsed =
-                        Date.parse(
-                            raw.trim()
-                        );
-
-                    if(
-                        Number.isFinite(parsed)
-                    ){
-                        return parsed;
-                    }
-                }
-
-
-                return 0;
-            }
-
-
-            // ========================================================
-            // 🔒 SESSION FILTER
-            // --------------------------------------------------------
-            // Prevent an accidental point from another session
-            // from becoming the distance authority.
-            // ========================================================
-
-            const sessionPoints =
-                points.filter(
-                    point => {
-
-                        if(
-                            !point ||
-                            typeof point !== "object"
-                        ){
-                            return false;
-                        }
-
-
-                        const pointSessionId =
-                            String(
-                                point.sessionId ||
-                                sessionId
-                            ).trim();
-
-
-                        return (
-                            !pointSessionId ||
-                            pointSessionId ===
-                                sessionId
-                        );
-                    }
-                );
-
-
-            if(
-                sessionPoints.length === 0
-            ){
-
-                console.warn(
-                    "⚠ END DUTY: no points belong to session",
-                    {
-                        sessionId
-                    }
-                );
-
-                return null;
-            }
-
-
-            // ========================================================
-            // 🕒 SORT CHRONOLOGICALLY
-            // ========================================================
-
-            sessionPoints.sort(
-                (a, b) => {
-
-                    const ta =
-                        getPatrolPointTimestamp(
-                            a
-                        );
-
-                    const tb =
-                        getPatrolPointTimestamp(
-                            b
-                        );
-
-                    return ta - tb;
-                }
-            );
-
-
-            // ========================================================
-            // 📏 FIND LAST POINT WITH REAL DISTANCE
-            // --------------------------------------------------------
-            // Search backwards.
-            //
-            // This prevents the START point (distance 0) from
-            // becoming authoritative when later patrol points
-            // already contain cumulative distance.
-            // ========================================================
-
-            let latestPoint =
-                null;
-
-            let distanceKm =
-                NaN;
-
-
-            for(
-                let i =
-                    sessionPoints.length - 1;
-
-                i >= 0;
-
-                i--
-            ){
-
-                const point =
-                    sessionPoints[i];
-
-
-                const km =
-                    Number(
-                        point?.distanceCoveredKm
-                    );
-
-
-                if(
-                    Number.isFinite(km) &&
-                    km >= 0
-                ){
-
-                    latestPoint =
-                        point;
-
-                    distanceKm =
-                        km;
-
-                    break;
-                }
-
-
-                const meters =
-                    Number(
-                        point?.distanceCoveredMeters
-                    );
-
-
-                if(
-                    Number.isFinite(meters) &&
-                    meters >= 0
-                ){
-
-                    latestPoint =
-                        point;
-
-                    distanceKm =
-                        meters / 1000;
-
-                    break;
-                }
-            }
-
-
-            if(
-                !latestPoint ||
-                !Number.isFinite(distanceKm) ||
-                distanceKm < 0
-            ){
-
-                console.warn(
-                    "⚠ END DUTY: cached points contain no usable distance",
-                    {
-                        sessionId,
-                        pointCount:
-                            sessionPoints.length
-                    }
-                );
-
-                return null;
-            }
-
-
-            console.log(
-                "⚡ FINAL DISTANCE FROM SESSION MEMORY:",
-                {
-                    sessionId,
-
-                    pointId:
-                        latestPoint?.id ??
-                        latestPoint?.pointId ??
-                        null,
-
-                    pointTimestamp:
-                        getPatrolPointTimestamp(
-                            latestPoint
-                        ),
-
-                    patrolPointCount:
-                        latestPoint?.patrolPointCount ??
-                        null,
-
-                    distanceKm:
-                        Number(
-                            distanceKm.toFixed(6)
-                        )
-                }
-            );
-
-
-            return distanceKm;
-
-        }
-        catch(err){
-
-            console.error(
-                "❌ END DUTY cached distance resolution failed:",
-                err
-            );
-
-            return null;
-        }
-
-    })();
-
-    // ============================================================
-    // 🔥 BUTTON
-    // ============================================================
-    const btn = event.target;
-    if (!btn) {
-      console.error("❌ Button not found");
-      console.groupEnd();
-      return;
-    }
-
-    // ============================================================
-    // 🔒 LOCK BUTTON
-    // ============================================================
-    btn.innerHTML = "⏳ SAVING...";
-    btn.disabled = true;
-
-    // ============================================================
-    // 📋 CAPTURE DUTY TYPE BEFORE FORM CLOSES
-    // ============================================================
-    const dutyType = document.getElementById("d-type")?.value || "Patrolling";
-
-    // ============================================================
-    // ⚡ UI TRANSITION AFTER CONFIRMED CLOSURE
-    // ============================================================
-    try {
-      closeEndDutyForm();
-    } catch (e) {}
-
-    try {
-      if (typeof updateDutyButton === "function") {
-        updateDutyButton();
-      }
-    } catch (e) {}
-
-    try {
-      if ((!window.currentSessionId || window.currentSessionId === sessionId) && typeof removeStaffFromUI === "function") {
-        removeStaffFromUI(profile.cleanName);
-      }
-    } catch (e) {}
-
-    showToast("📊 Processing ended duty report...");
-
-    // ============================================================
-    // 🔥 OBS
-    // ============================================================
-    const obs = document.getElementById("ed-obs")?.value || "";
-
-    // ============================================================
-    // 🔥 PAYLOAD
-    // ============================================================
-    const payload = {
-      obs: obs,
-      leader: profile.cleanName,
-      phone: profile.phone
-    };
-
-console.log("📤 PAYLOAD:", payload);
-
-// ============================================================
-// 🎯 FINAL AUTHORITATIVE DISTANCE
-// ============================================================
-
-const cachedDistanceKm = await authoritativeDistancePromise;
-const savedDistanceKm = lifecycleResult.telemetry.distanceCoveredKm ??
-  (lifecycleResult.telemetry.distanceCoveredMeters == null ? null : lifecycleResult.telemetry.distanceCoveredMeters / 1000);
-const authoritativeDistanceKm = cachedDistanceKm ?? savedDistanceKm;
-
-const hasAuthoritativeDistance =
-    Number.isFinite(
-        Number(authoritativeDistanceKm)
-    ) &&
-    Number(authoritativeDistanceKm) > 0;console.log(
-    "📏 FINAL DISTANCE SOURCE:",
-    hasAuthoritativeDistance
-        ? "sessionPointCache"
-        : "frontend_track_fallback",
-    hasAuthoritativeDistance
-        ? authoritativeDistanceKm
-        : "UNAVAILABLE"
-);
-
-// ============================================================
-// 🔥 BACKEND SAVE
-// ============================================================
-
-await Promise.allSettled([
-callBackend("markDutyOutWithObs", payload),
-
-     // ============================================================
-// 🔥 DUTY END → RESET LIVE STAFF
-// ------------------------------------------------------------
-// Keep live_staff document.
-// Do NOT delete the document.
-//
-// Session ended:
-//   sessionId             → ""
-//   dutyActive            → false
-//   status                → ENDED
-//
-// Reset live telemetry:
-//   speed                 → 0
-//   patrolPointCount      → 0
-//   distanceCoveredKm     → 0
-//   distanceCoveredMeters → 0
-//
-// Remove temporary live GPS position fields.
-// Historical patrol points remain untouched.
-// ============================================================
-
-      (async () => {
-        try {
-          if (!sessionId) {
-            console.warn("⚠ No sessionId available");
-            return;
-          }
-// ======================================
-// 🔥 BUILD FINAL HISTORY FROM RAM CACHE
-// ======================================
-//
-// The live patrol listener has already loaded
-// patrol_tracks/{sessionId}/points into:
-//
-//     window.sessionPointCache[sessionId]
-//
-// Therefore DO NOT read the same points from
-// Firestore again at End Duty.
-//
-// Firestore is used only as a fallback when
-// the local cache is genuinely unavailable.
-// ======================================
-
-let fullTrack = [];
-
-const cachedPointMap =
-  endingPointMap;
-
-if(
-  cachedPointMap &&
-  typeof cachedPointMap === "object"
-){
-
-fullTrack =
-    Object.values(
-        cachedPointMap
-    )
-
-    .filter(p =>
-        Number.isFinite(
-            Number(p?.lat)
-        )
-        &&
-        Number.isFinite(
-            Number(
-                p?.lon ??
-                p?.lng
-            )
-        )
-    )
-
-    .map(p => {
-
-        const rawTime =
-            p?.time ??
-            p?.timestamp ??
-            "";
-
-        let pointTime =
-            Number(rawTime);
-
-        if(
-            !Number.isFinite(
-                pointTime
-            )
-        ){
-            const parsedTime =
-                Date.parse(
-                    String(
-                        rawTime
-                    )
-                );
-
-            if(
-                Number.isFinite(
-                    parsedTime
-                )
-            ){
-                pointTime =
-                    parsedTime;
-            }
-        }
-
-        return {
-            breakTrack: p.breakTrack === true,
-            lat:
-                Number(p.lat),
-
-            lng:
-                Number(
-                    p.lon ??
-                    p.lng
-                ),
-
-            time:
-                pointTime
-        };
-
-    })
-
-    .filter(p =>
-        Number.isFinite(
-            p.time
-        )
-    );
-
-}
-
-// ======================================
-// 🔥 CHRONOLOGICAL ORDER
-// ======================================
-
-fullTrack.sort(
-  (a,b) =>
-    Number(a.time || 0) -
-    Number(b.time || 0)
-);
-
-console.log(
-  "📍 FINAL TRACK FROM RAM CACHE:",
-  fullTrack.length
-);
-
-
-// ============================================================
-// 💾 END DUTY TRACK RECOVERY
-//
-// PRIORITY:
-// 1. RAM
-// 2. IDB
-// 3. FIRESTORE
-// ============================================================
-
-
-// ============================================================
-// 1️⃣ RAM CACHE
-// ============================================================
-
-if(
-  fullTrack.length >= 2
-){
-
-  console.log(
-    "⚡ END DUTY TRACK SOURCE — RAM",
-    {
-      sessionId:
-        sessionId,
-
-      count:
-        fullTrack.length
-    }
-  );
-
-}
-
-
-// ============================================================
-// 2️⃣ IDB CACHE
-// ============================================================
-
-if(
-  fullTrack.length < 2
-){
-
-  console.log(
-    "💾 END DUTY — RAM insufficient; checking IDB:",
-    sessionId
-  );
-
-
-  const idbPoints =
-    await loadPatrolPointsFromIDB(
-      sessionId
-    );
-
-
-  if(
-    idbPoints &&
-    typeof idbPoints === "object"
-  ){
-
-    const idbTrack =
-      Object.values(
-        idbPoints
-      )
-
-      .filter(p =>
-        Number.isFinite(
-          Number(p?.lat)
-        )
-        &&
-        Number.isFinite(
-          Number(p?.lon)
-        )
-      )
-
-      .map(p => ({
-        breakTrack: p.breakTrack === true,
-        lat:
-          Number(p.lat),
-
-        lng:
-          Number(p.lon),
-
-        time:
-          Number(
-            p.time ??
-            p.timestamp ??
-            0
-          )
-      }));
-
-
-    idbTrack.sort(
-      (a,b) =>
-        Number(a.time || 0) -
-        Number(b.time || 0)
-    );
-
-
-    if(
-      idbTrack.length >= 2
-    ){
-
-      fullTrack =
-        idbTrack;
-
-
-      console.log(
-        "⚡ END DUTY TRACK SOURCE — IDB",
-        {
-          sessionId:
-            sessionId,
-
-          count:
-            fullTrack.length
-        }
-      );
-
-    }
-    else{
-
-      console.warn(
-        "⚠ END DUTY — IDB cache insufficient:",
-        idbTrack.length
-      );
-
-    }
-
-  }
-
-}
-
-
-// ============================================================
-// 3️⃣ FIRESTORE — LAST RESORT ONLY
-// ============================================================
-
-if(
-  fullTrack.length < 2
-){
-
-  // ============================================================
-  // 🔍 END-DUTY FIRESTORE FALLBACK DIAGNOSTIC
-  // ============================================================
-
-  window.__END_DUTY_TRACK_SOURCE_STATS__ ||= {
-    RAM: 0,
-    IDB: 0,
-    FIRESTORE: 0
-  };
-
-  window.__END_DUTY_TRACK_SOURCE_STATS__.FIRESTORE++;
-
-  console.warn(
-    "🚨 FIRESTORE PATROL FALLBACK TRIGGERED",
-    {
-      sessionId,
-      ramPointCount:
-        fullTrack.length
-    }
-  );
-
-  console.warn(
-    "🌐 END DUTY TRACK — RAM + IDB insufficient; " +
-    "using Firestore fallback:",
-    sessionId
-  );
-
-  const pointsSnap =
-    await window.fb.getDocs(
-      window.fb.query(
-        window.fb.collection(
-          window.db,
-          "patrol_tracks",
-          sessionId,
-          "points"
-        ),
-        window.fb.orderBy(
-          "time"
-        )
-      )
-    );
-
-
-  fullTrack = [];
-
-
-  pointsSnap.forEach(doc => {
-
-    const p =
-      doc.data();
-
-
-    if(
-      Number.isFinite(
-        Number(p?.lat)
-      )
-      &&
-      Number.isFinite(
-        Number(p?.lon)
-      )
-    ){
-
-const rawTime =
-    p.time ??
-    p.timestamp ??
-    "";
-
-let pointTime =
-    Number(rawTime);
-
-if(
-    !Number.isFinite(
-        pointTime
-    )
-){
-    const parsedTime =
-        Date.parse(
-            String(
-                rawTime
-            )
-        );
-
-    if(
-        Number.isFinite(
-            parsedTime
-        )
-    ){
-        pointTime =
-            parsedTime;
-    }
-}
-
-if(
-    Number.isFinite(
-        pointTime
-    )
-){
-    fullTrack.push({
-        breakTrack: p.breakTrack === true,
-        lat:
-            Number(p.lat),
-
-        lng:
-            Number(p.lon),
-
-        time:
-            pointTime
-    });
-}
-    }
-
-  });
-
-
-  console.log(
-    "🌐 END DUTY TRACK SOURCE — FIRESTORE",
-    {
-      sessionId:
-        sessionId,
-
-      count:
-        fullTrack.length
-    }
-  );
-
-}
-if(
-  fullTrack.length < 2
-){
-
-  throw new Error(
-    `Insufficient track points: ${fullTrack.length}`
-  );
-
-}
-
-console.table({
-
-  sessionId,
-
-  fullTrackPoints:
-    fullTrack.length
-
-});
-
-// ======================================
-// 🔥 TELEPORT FILTER
-// ======================================
-
-const cleanTrack = [];
-
-for(
-  let i = 0;
-  i < fullTrack.length;
-  i++
-){
-
-  const curr =
-    fullTrack[i];
-
-  // ==========================
-  // FIRST POINT
-  // ==========================
-  if(i === 0){
-
-    cleanTrack.push(curr);
-
-    continue;
-  }
-
-  const prev =
-    fullTrack[i - 1];
-
-  const dist =
-
-    map.distance(
-
-      [prev.lat, prev.lng],
-
-      [curr.lat, curr.lng]
-
-    );
-
-  const timeDiffSec =
-
-    Math.max(
-
-      1,
-
-      (
-        curr.time -
-        prev.time
-      ) / 1000
-
-    );
-
-  const speedKmh =
-
-    (dist / timeDiffSec)
-    * 3.6;
-
-  const isTeleport =
-
-    dist > 300
-
-    ||
-
-    speedKmh > 120
-
-    ||
-
-    !isFinite(dist)
-
-    ||
-
-    !isFinite(speedKmh);
-
-  if(isTeleport){
-
-    console.warn(
-
-      "🚫 HISTORY TELEPORT REMOVED",
-
-      {
-
-        distance:
-          Math.round(dist),
-
-        speed:
-          Math.round(speedKmh),
-
-        from:
-          [prev.lat, prev.lng],
-
-        to:
-          [curr.lat, curr.lng]
-
-      }
-
-    );
-
-    continue;
-  }
-
-  cleanTrack.push(curr);
-
-}
-
-console.table({
-
-  originalPoints:
-    fullTrack.length,
-
-  cleanedPoints:
-    cleanTrack.length,
-
-  removed:
-    fullTrack.length -
-    cleanTrack.length
-
-});
-
-// ======================================
-// 🔥 USE CLEAN TRACK
-// ======================================
-
-console.log(
-  "STEP A - processHistoryTrack START"
-);
-
-await processHistoryTrack(
-  cleanTrack,
-  sessionId,
-  authoritativeDistanceKm
-);
-console.log(
-  "STEP A - processHistoryTrack DONE"
-);
-// ======================================
-// FINAL ANALYTICS FLUSH
-// ======================================
-
-try {
-
-console.log(
-  "STEP B - flushAnalyticsBuffer START"
-);
-console.log("========== BEFORE FINAL FLUSH ==========");
-
-console.log(
-  "analyticsBuffer",
-  window.analyticsBuffer
-);
-
-console.log(
-  "analyticsBuffer keys",
-  Object.keys(window.analyticsBuffer || {})
-);
-
-Object.entries(window.analyticsBuffer || {}).forEach(
-([gridId,data])=>{
-
-  console.table({
-
-    gridId,
-
-    points:
-      data.localCoordsArray?.[0]?.length,
-
-    cells:
-      data.touchedCells?.size
-
-  });
-
-});
-await flushAnalyticsBuffer();
-
-console.log(
-  "STEP B - flushAnalyticsBuffer DONE"
-);
-
-  console.log(
-    "✅ FINAL ANALYTICS FLUSH COMPLETE"
-  );
-
-  } catch (err) {
-
-  reportingFailures.push(err);
-  console.error(
-    "❌ FINAL ANALYTICS FLUSH FAILED",
-    err
-  );
-
-}
-
-// ======================================
-// USE REAL TRACK FROM patrol_tracks
-// ======================================
-
-const points =
-
-  cleanTrack.map(p => ({
-
-    lat:
-      Number(p.lat),
-
-    lng:
-      Number(
-        p.lng ?? p.lon
-      )
-
-  }));
-// ============================================================
-// 📏 FINAL PATROL DISTANCE
-// ------------------------------------------------------------
-// Calculate only from the final clean patrol track.
-// This is the distance used by Telegram.
-// ============================================================
-
-let distanceMeters = 0;
-
-for (
-  let i = 1;
-  i < cleanTrack.length;
-  i++
-) {
-
-  const prev =
-    cleanTrack[i - 1];
-
-  const curr =
-    cleanTrack[i];
-
-  const segmentDistance =
-    map.distance(
-      [prev.lat, prev.lng],
-      [curr.lat, curr.lng]
-    );
-
-  if (
-    Number.isFinite(segmentDistance) &&
-    segmentDistance >= 0
-  ) {
-
-    distanceMeters +=
-      segmentDistance;
-
-  }
-}
-
-const distanceKm =
-  distanceMeters / 1000;
-// ============================================================
-// 📏 AUTHORITATIVE FINAL DISTANCE
-// ============================================================
-
-const finalDistanceKm =
-    hasAuthoritativeDistance
-
-        ? Number(
-            Number(
-                authoritativeDistanceKm
-            ).toFixed(2)
-          )
-
-        : Number(
-            distanceKm.toFixed(2)
-          );
-
-const finalDistanceSource =
-    hasAuthoritativeDistance
-        ? "live_staff"
-        : "frontend_track_fallback";
-
-console.log(
-    "📏 FINAL DUTY DISTANCE:",
-    {
-        distanceKm:
-            finalDistanceKm,
-
-        source:
-            finalDistanceSource
-    }
-);
-console.log(
-  "📏 FINAL PATROL DISTANCE:",
-  distanceKm.toFixed(2),
-  "km"
-);
-// endedAt was captured before lifecycle closure, not after reporting.
-console.log(
-  "🕐 DUTY ENDED:",
-  new Date(endedAt).toISOString()
-);
-// ============================================================
-// ⏱ DUTY DURATION
-// ============================================================
-
-let durationText = "-";
-
-const startMs =
-  new Date(
-    dutyStartedAt
-  ).getTime();
-
-if (
-  Number.isFinite(startMs) &&
-  startMs > 0 &&
-  endedAt >= startMs
-) {
-
-  const durationMinutes =
-    Math.floor(
-      (endedAt - startMs) /
-      60000
-    );
-
-  const hours =
-    Math.floor(
-      durationMinutes / 60
-    );
-
-  const minutes =
-    durationMinutes % 60;
-
-  durationText =
-    hours > 0
-      ? `${hours} hr ${minutes} min`
-      : `${minutes} min`;
-}
-
-console.log(
-  "⏱ DUTY DURATION:",
-  durationText
-);
-console.table({
-
-  sessionId,
-
-  patrolTrackPoints:
-    points.length
-
-});
-// ============================================================
-// 📊 BUILD COMPLETED SESSION REPORT SNAPSHOT
-// ------------------------------------------------------------
-// pointCount authority:
-//     final completed track → points.length
-//
-// No Firestore point-count read.
-// No IDB point-count read.
-// ============================================================
-
-const sessionReportSnapshot =
-    await ggBuildCompletedSessionReportSnapshot(
-        sessionId,
-        dutyStartedAt,
-        endedAt,
-        finalDistanceKm,
-        points.length,
-        points,
-        ggEndDutyGISSegments(fullTrack, cleanTrack)
-    );
-// ==========================================================
-// 🔎 DIAGNOSTIC 1 — END DUTY SNAPSHOT BEFORE KML UPLOAD
-// ----------------------------------------------------------
-// This is the LAST frontend checkpoint before
-// uploadPatrolKML() receives the completed-session values.
-// If these values are correct here but the Sheet becomes 0,
-// the failure is downstream of snapshot generation.
-// ==========================================================
-
-console.log(
-  "🔎 DIAG 1 — END DUTY COMPLETED SNAPSHOT BEFORE UPLOAD:",
-  {
-    sessionId:
-      sessionReportSnapshot?.sessionId,
-
-    staffName:
-      sessionReportSnapshot?.staffName,
-
-    phone:
-      sessionReportSnapshot?.phone,
-
-    division:
-      sessionReportSnapshot?.division,
-
-    range:
-      sessionReportSnapshot?.range,
-
-    beat:
-      sessionReportSnapshot?.beat,
-
-    startedAt:
-      sessionReportSnapshot?.startedAt,
-
-    endedAt:
-      sessionReportSnapshot?.endedAt,
-
-    durationMinutes:
-      sessionReportSnapshot?.durationMinutes,
-
-    distanceKm:
-      finalDistanceKm,
-
-    pointCount:
-      points?.length,
-
-    cellVisitOccurrences:
-      sessionReportSnapshot?.cellVisitOccurrences,
-
-    uniqueCellsVisited:
-      sessionReportSnapshot?.uniqueCellsVisited,
-
-    visitedHa:
-      sessionReportSnapshot?.visitedHa,
-
-    coveragePercent:
-      sessionReportSnapshot?.coveragePercent,
-
-    patrolIntensityPercent:
-      sessionReportSnapshot?.patrolIntensityPercent,
-
-    elephantSightings:
-      sessionReportSnapshot?.elephantSightings,
-
-    wildlifeSightings:
-      sessionReportSnapshot?.wildlifeSightings ??
-      sessionReportSnapshot?.otherWildlifeSightings,
-
-    offencesDetected:
-      sessionReportSnapshot?.offencesDetected,
-
-    compartmentsVisited:
-      sessionReportSnapshot?.compartmentsVisited,
-
-    uniqueCellIds:
-      Array.isArray(sessionReportSnapshot?.uniqueCellIds)
-        ? sessionReportSnapshot.uniqueCellIds.length
-        : 0,
-
-    compartmentIds:
-      Array.isArray(sessionReportSnapshot?.compartmentIds)
-        ? sessionReportSnapshot.compartmentIds.length
-        : 0
-  }
-);
-// ======================================
-// KML GENERATION
-// ======================================
-
-showToast(
-  "🗺️ Generating patrol KML..."
-);
-
-console.log(
-  "STEP C - uploadPatrolKML START"
-);
-
-
-
-const kmlUrl = await uploadPatrolKML(
-  sessionId,
-  points,
-  authoritativeDistanceKm,
-  sessionReportSnapshot
-);
-console.log(
-  "STEP C RESULT",
-  kmlUrl
-);
-
-if(!kmlUrl){
-
-  reportingFailures.push(new Error("KML was not generated"));
-  console.error(
-    "KML RETURNED NULL"
-  );
-
-}
-console.log(
-  "STEP C - uploadPatrolKML DONE",
-  kmlUrl
-);
-
-window.lastDutyKmlUrl =
-  kmlUrl || "";
-
-// ======================================
-// UPDATE HISTORY
-// ======================================
-
-await window.fb.updateDoc(
-  window.fb.doc(
-    window.db,
-    "history",
-    sessionId
-  ),
-  {
-    pointCount:
-      points.length,
-
-    kmlUrl:
-      kmlUrl || "",
-
-    endedAt,
-
-    // ========================================================
-    // 📏 AUTHORITATIVE DISTANCE
-    // ========================================================
-
-    distanceKm:
-      finalDistanceKm,
-
-    authoritativeDistanceKm:
-      hasAuthoritativeDistance
-        ? finalDistanceKm
-        : null,
-
-    distanceSource:
-      finalDistanceSource
-  }
-);
-
-
-// ============================================================
-// 📊 MONTHLY AUTHORITATIVE DISTANCE
-// ------------------------------------------------------------
-// Exactly ONE accounting event per completed session.
-// ------------------------------------------------------------
-// IMPORTANT:
-// This runs ONLY AFTER the history document has successfully
-// been written.
-// ============================================================
-
-let distanceAccountingApplied =
-  false;
-
-try{
-
-  const accountingResult =
-    await commitAuthoritativeSessionDistance(
-      sessionId,
-      finalDistanceKm,
-      endedAt,
-      finalDistanceSource
-    );
-
-  distanceAccountingApplied =
-    accountingResult?.applied === true;
-
-  console.log(
-    "📊 DISTANCE ACCOUNTING RESULT:",
-    accountingResult
-  );
-
-}
-catch(distanceAccountingErr){
-  reportingFailures.push(distanceAccountingErr);
-
-  console.error(
-    "❌ AUTHORITATIVE DISTANCE ACCOUNTING FAILED:",
-    distanceAccountingErr
-  );
-
-  distanceAccountingApplied =
-    false;
-}
-
-
-console.table({
-
-  sessionId,
-
-  pointCount:
-    points.length,
-
-  kmlGenerated:
-    !!kmlUrl,
-
-  distanceKm:
-    finalDistanceKm,
-
-  distanceSource:
-    finalDistanceSource,
-
-  distanceAccountingApplied
-
-});
-
-
-// ============================================================
-// 📤 TELEGRAM — FINAL DUTY END SUMMARY
-// ============================================================
-// NO PERFORMANCE REPORT.
-// Sends only the completed duty summary.
-// ============================================================
-
-const dutyEndTelegramData = {
-
-  name:
-    profile.name ||
-    profile.cleanName ||
-    "",
-
-  cleanName:
-    profile.cleanName ||
-    "",
-
-  phone:
-    profile.phone ||
-    "",
-
-  dutyType:
-    dutyType ||
-    "Patrolling",
-
-  sessionId:
-    sessionId,
-
-  dutyStartedAt:
-    dutyStartedAt || "",
-
-  endedAt:
-    endedAt,
-
-  durationText:
-    durationText,
-
-  pointCount:
-    points.length,
-
-  distanceKm:
-  finalDistanceKm,
-
-  kmlReady:
-    !!kmlUrl,
-
-  kmlUrl:
-    kmlUrl || ""
-
-};
-
-console.log(
-  "📤 FINAL DUTY TELEGRAM:",
-  dutyEndTelegramData
-);
-
-// ============================================================
-// IMPORTANT:
-// Reuse the EXISTING Telegram/Apps Script transport.
-// The receiver must format this payload as the new
-// DUTY ENDED message.
-// ============================================================
-
-await sendDutyReportToAppsScript(
-  dutyEndTelegramData
-)
-.catch(err => {
-
-  reportingFailures.push(err);
-  console.error(
-    "❌ Duty End Telegram failed",
-    err
-  );
-
-});
-// Lifecycle closure already committed. Reporting must never rewrite duty state or endedAt.
-// ============================================================
-// 🧹 CLEAR REALTIME PERFORMANCE TRACK CACHE
-// ============================================================
-
-
-
-        } catch (err) {
-          console.error("❌ End Duty reporting failed", err);
-          throw err;
-        }
-      })()
-    ])
-.then(results => {
-
-  for (const result of results) {
-    if (result.status === 'rejected') reportingFailures.push(result.reason);
-    else if (result.value == null || result.value?.error || result.value?.success === false) {
-      // The report branch resolves undefined on success; the backend must acknowledge its result.
-      if (result === results[0]) reportingFailures.push(new Error('Duty register update was not acknowledged'));
-    }
-  }
-  const ownsCurrentState = !window.currentSessionId || window.currentSessionId === sessionId;
-  if (ownsCurrentState) {
-    window.historyFlushInProgress = false;
-    window.lastTrackPoint = null;
-    window.sessionVisitedGrids = new Set();
-    window.newMonthlyCellIds = new Set();
-    window.newMonthlyCompartmentIds = new Set();
-    window.newMonthlyGridsCaptured = 0;
-  }
-  if (!reportingFailures.length && window.sessionTrackCache) delete window.sessionTrackCache[sessionId];
-  recordEndDutyReportState(endingContext, reportingFailures.length ? 'RETRY_REQUIRED' : 'COMPLETE', reportingFailures);
-  if (reportingFailures.length) {
-    showToast('⚠️ Duty ended. Report incomplete; retry required. GPS history was preserved.');
-    console.error('End Duty report retry required for session', sessionId, reportingFailures);
-    return;
-  }
-  // ==========================================================
-  // 🗺️ ONLY USER-FACING RESULT
-  // ==========================================================
-
-  const finalKmlUrl =
-    String(
-      window.lastDutyKmlUrl || ""
-    ).trim();
-
-  if(
-    finalKmlUrl &&
-    typeof showPatrolKMLReady ===
-      "function"
-  ){
-
-    showPatrolKMLReady(
-      finalKmlUrl
-    );
-
-  }
-  else {
-
-    showToast(
-      "⚠️ Duty ended. Patrol KML was not generated."
-    );
-
-  }
-
-  console.log(
-    "✅ End duty background sync complete",
-    results
-  );
-
-})    .catch(err => {
-      reportingFailures.push(err);
-      recordEndDutyReportState(endingContext, "RETRY_REQUIRED", reportingFailures);
-      showToast("⚠️ Duty ended. Report incomplete; retry required.");
-      console.error("❌ End duty background sync failed", err);
-    });
-
-  } catch (err) {
-    console.error("❌ Error:", err);
-    if (lifecycleClosed && endingContext) {
-      recordEndDutyReportState(endingContext, 'RETRY_REQUIRED', [err]);
-      alert('Duty ended, but report processing failed: ' + (err?.message || err));
-    } else {
-      alert('End Duty failed or could not be confirmed. Retry the same session: ' + (err?.message || err));
-    }
+    localStorage.removeItem('endDutyClosureRequest:'+profile.cleanName);
+    showToast(result.alreadyEnded ? 'Duty already ended. Recovering pending report.' : '✅ Duty ended. Report registration pending.');
+    // Exact stop is issued before another Start can acquire the lifecycle lock.
+    const stopped=await notifyAndroidDuty(false,sessionId,true);
+    if (!stopped && window.Android) {window.endDutyAndroidStopPending=sessionId;
+      showToast('Duty ended; exact Android GPS stop is unconfirmed.');}
+    void dutyProcessReport(sessionId);
+  } catch(error) {
+    console.error('End Duty',error);
+    if (lifecycleClosed) {showToast('Duty ended. Report recovery pending.');
+      if (endingContext) void dutyProcessReport(endingContext.sessionId);}
+    else alert('End Duty failed: '+error.message);
   } finally {
-    if (ownsEndDutyLock) {
-      window.endDutyInProgress = false;
-      window.endDutyClosureInProgress = false;
-      if (lifecycleClosed && typeof autoShowEndDuty === "function") {
-        Promise.resolve().then(() => autoShowEndDuty()).catch(err => console.warn("Duty status refresh failed", err));
-      }
-    }
-    const btn = document.getElementById("confirmEndDutyBtn") || document.querySelector("#confirmEndDutyToastBtn")?.parentElement?.parentElement?.parentElement?.querySelector("button:last-child");
-    if (btn && ownsEndDutyLock) {
-      btn.innerHTML = "✅ SUBMIT & END DUTY";
-      btn.disabled = false;
-    }
+    if (ownsEndDutyLock) {window.endDutyInProgress=false;window.endDutyClosureInProgress=false;}
     console.groupEnd();
   }
 }
 
    
-function generateKMLFromTrack(points){
-
-  const coordinates =
-
-    (points || [])
-
-    .filter(p => {
-
-      const lat = Number(
-        p?.lat
-      );
-
-      const lng = Number(
-
-        p?.lng ??
-
-        p?.lon ??
-
-        p?.longitude
-      );
-
-      return (
-
-        Number.isFinite(lat) &&
-
-        Number.isFinite(lng)
-
-      );
-
-    })
-
-    .map(p => {
-
-      let lat = Number(
-        p.lat
-      );
-
-      let lng = Number(
-
-        p.lng ??
-
-        p.lon ??
-
-        p.longitude
-      );
-
-      // auto-fix reversed coordinates
-      if(
-        Math.abs(lat) > 60 &&
-        Math.abs(lng) < 60
-      ){
-        [lat,lng] = [lng,lat];
-      }
-
-      return `${lng},${lat},0`;
-
-    })
-
-    .join("\n");
-
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<kml xmlns="http://www.opengis.net/kml/2.2">
-
-<Document>
-
-<Style id="patrolStyle">
-  <LineStyle>
-    <color>ff0000ff</color>
-    <width>3</width>
-  </LineStyle>
-</Style>
-
-<Placemark>
-<name>Patrol Track</name>
-<styleUrl>#patrolStyle</styleUrl>
-
-<LineString>
-<tessellate>1</tessellate>
-
-<coordinates>
-${coordinates}
-</coordinates>
-
-</LineString>
-
-</Placemark>
-
-</Document>
-
-</kml>`;
+function generateKMLFromTrack(points) {
+  const segments=dutySegments(points).filter(s=>s.length>=2);
+  if (!segments.length) throw Error('No route geometry');
+  return '<?xml version="1.0" encoding="UTF-8"?>'+
+    '<kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>PatrolTrack</name><MultiGeometry>'+
+    segments.map(segment=>'<LineString><tessellate>1</tessellate><coordinates>'+segment.map(p=>
+      Number(p.lng ?? p.lon)+','+Number(p.lat)+',0').join('\n')+'</coordinates></LineString>').join('')+
+    '</MultiGeometry></Placemark></Document></kml>';
 } 
 
 /* ================================================================
@@ -123548,7 +122023,8 @@ async function ggBuildCompletedSessionReportSnapshot(
     distanceKm,
     pointCount,
 finalPoints = [],
-gisSegments = ggEndDutyGISSegments(finalPoints)
+gisSegments = ggEndDutyGISSegments(finalPoints),
+reportIdentity = null
 ){
 
     const cleanSessionId =
@@ -123573,12 +122049,12 @@ gisSegments = ggEndDutyGISSegments(finalPoints)
        ============================================================ */
 
     const profile =
-        window.userProfile ||
+        reportIdentity || window.userProfile ||
         {};
 
 
     const sessionStaff =
-        window.patrolSessionStaff?.[
+        reportIdentity || window.patrolSessionStaff?.[
             cleanSessionId
         ] ||
         {};
@@ -125601,7 +124077,7 @@ console.log(
   sessionId,
   points,
   authoritativeDistanceKm = null,
-  sessionReportSnapshot = null
+  sessionReportSnapshot = null, reportOptions = {}
 ) {
 
   try {
@@ -125728,7 +124204,7 @@ console.log(
     Number.isFinite(
         Number(authoritativeDistanceKm)
     ) &&
-    Number(authoritativeDistanceKm) > 0;
+    Number(authoritativeDistanceKm) >= 0;
 
     // ==========================================================
     // 🔄 FALLBACK DISTANCE CALCULATION
@@ -126559,6 +125035,7 @@ if(finalGISIssues.length){
 
 
     // ==========================================================
+    if (reportOptions.uploadOnly) return downloadUrl;
     // APPS SCRIPT SYNC
     // ----------------------------------------------------------
     // PatrolKMLRegister becomes the completed-session master
@@ -127024,7 +125501,7 @@ console.log(
 
       if(
         !registerResult ||
-        registerResult.success !== true
+        registerResult.success !== true || registerResult.sessionId !== cleanSessionId
       ){
 
         console.error(
@@ -127086,8 +125563,7 @@ catch (err) {
     // 🔥 SAVE FOR END-DUTY POPUP
     // ==========================================================
 
-    window.lastDutyKmlUrl =
-      downloadUrl;
+    window.completedDutyKmlUrls ||= {}; window.completedDutyKmlUrls[cleanSessionId]=downloadUrl;
 
 
     // ==========================================================
@@ -127116,7 +125592,7 @@ catch (err) {
     );
 
 
-    return null;
+    throw err;
 
   }
 
@@ -127311,6 +125787,9 @@ window.openDutyKML =
 
     const result =
       await response.text();
+    if (!response.ok) throw Error('Telegram HTTP '+response.status);
+    let ack;try {ack=JSON.parse(result);} catch (_) {throw Error('Telegram acknowledgement invalid');}
+    if (ack.error || ack.success===false) throw Error(ack.error || 'Telegram rejected');
 
     console.log(
       "✅ Duty report sent to Apps Script",
@@ -127325,9 +125804,8 @@ window.openDutyKML =
       "❌ Duty report send failed",
       err
     );
-
+    throw err;
   }
-
 }
 function closeEndDutyForm() {
   const m = document.getElementById("end-duty-modal");
@@ -135263,6 +133741,7 @@ async function startDuty(event) {
 // WAIT FOR ANDROID LOCATION PERMISSION
 // ===========================================================
 
+startDutySubmitting = true;
 try {
 
     if (
@@ -135316,13 +133795,11 @@ try {
 // 📜 SESSION TRACK STORAGE
 // ========================================
 
-window.sessionTrackPoints = [];
 
-window.lastTrackPoint = null;
 
-window.historyLoaded = false;
-    window.heatmapLoaded = false;
-    window.monthlyHeatmapLayer = null;
+
+
+// History view is reset only after authoritative Start succeeds.
     // =====================================================
 // 🔥 UI TRANSITION LOCK
 // =====================================================
@@ -135359,7 +133836,7 @@ updateDutyButton();
     // =====================================================
     // 🔥 BACKEND CALL
     // =====================================================
-   (async()=>{
+   await (async()=>{
 
   try {
 
@@ -135381,6 +133858,7 @@ await waitForFirebaseReady();
 
       const cleanLeader =
   cleanName(payload.leader);
+if (!cleanLeader || cleanLeader!==String(profile.cleanName || '').trim()) throw Error('Staff identity mismatch; refresh the authenticated profile');
 
 const now =
   new Date();
@@ -135399,84 +133877,15 @@ const now =
 const startMs =
   Date.now();
 
-window.dutyStartedAt =
-  startMs;
-
-localStorage.setItem(
-  "dutyStartedAt",
-  String(startMs)
-);
-
 // =====================================================
 // 🔥 SESSION ID
 // =====================================================
 
 const sessionId =
-  `${cleanLeader}_${startMs}`;
+  `${cleanLeader}_${crypto.randomUUID()}_${startMs}`;
 // =====================================================
 // 🔥 SAVE LOCALLY
 // =====================================================
-localStorage.setItem(
-  "sessionId",
-  sessionId
-);
-
-
-    // =====================================================
-// 🔥 SAVE SESSION RUNTIME
-// =====================================================
-window.currentSessionId =
-  sessionId;
-
-// =====================================
-// SESSION ANALYTICS RESET
-// =====================================
-
-window.sessionVisitedGrids =
-  new Set();
-
-// =====================================
-// SESSION REPORT COUNTERS
-// =====================================
-
-window.sessionNewMonthlyCellCount =
-  0;
-
-window.sessionNewMonthlyCompartmentCount =
-  0;
-
-// =====================================
-// LEGACY MONTHLY TRACKERS
-// KEEP IF USED ELSEWHERE
-// =====================================
-
-window.newMonthlyCellIds =
-  new Set();
-
-window.newMonthlyCompartmentIds =
-  new Set();
-
-window.newMonthlyGridsCaptured =
-  0;
-    // =====================================
-// RESET LIVE PERFORMANCE
-// =====================================
-
-// =====================================================
-// 🔥 HISTORY STATE ONLY
-// =====================================================
-
-window.sessionTrackCache ??= {};
-
-window.sessionTrackCache[
-  sessionId
-] = [];
-   
-
-console.log(
-  "🟢 SESSION STARTED:",
-  sessionId
-);
     const liveRef =
       doc(
         window.db,
@@ -135603,11 +134012,7 @@ console.log(
 // =====================================================
 // 🔥 LIVE STAFF UPDATE
 // =====================================================
-await setDoc(
-
-  liveRef,
-
-  {
+const liveData = {
 
     cleanName:
       cleanLeader,
@@ -135697,10 +134102,7 @@ lastSeen:
     type:
       "Staff"
 
-  },
-
-  { merge:true }
-);
+  };
 
 // =====================================================
 // 🔥 TRACK DOCUMENT
@@ -135713,11 +134115,7 @@ const trackRef =
     sessionId
   );
 
-await setDoc(
-
-  trackRef,
-
-  {
+const trackData = {
 
     // ====================================
     // 🔥 SESSION
@@ -135826,10 +134224,101 @@ updatedAt: Date.now(),
     createdAt:
       serverTimestamp()
 
-  },
+  };
+const previousParents=await window.fb.getDocsFromServer(window.fb.query(
+  window.fb.collection(window.db,'patrol_tracks'),window.fb.where('cleanName','==',cleanLeader)));
+const activeParentRefs=[];
+previousParents.forEach(parent=>{const data=parent.data();if(data.dutyActive===true || data.status==='ACTIVE')
+  activeParentRefs.push(window.fb.doc(window.db,'patrol_tracks',parent.id));});
+await window.fb.runTransaction(window.db,async transaction=>{
+  const live=await transaction.get(liveRef), parent=await transaction.get(trackRef);
+  if (parent.exists()) throw Error('Session ID collision; retry Start Duty');
+  for (const ref of activeParentRefs) {
+    const old=await transaction.get(ref);
+    if (old.exists() && (old.data().dutyActive===true || old.data().status==='ACTIVE'))
+      throw Error('Existing ACTIVE patrol session requires reconciliation; no history was changed');
+  }
+  if (live.exists()) {
+    const data=live.data();
+    if ((data.cleanName && data.cleanName!==cleanLeader) || data.dutyActive===true ||
+        data.status==='ACTIVE' || String(data.sessionId || '').trim())
+      throw Error('Existing active or inconsistent duty requires reconciliation');
+  }
+  transaction.set(liveRef,liveData,{merge:true});
+  transaction.set(trackRef,trackData);
+});
+window.dutyStartedAt =
+  startMs;
 
-  { merge:true }
+localStorage.setItem(
+  "dutyStartedAt",
+  String(startMs)
 );
+
+
+localStorage.setItem(
+  "sessionId",
+  sessionId
+);
+
+
+    // =====================================================
+// 🔥 SAVE SESSION RUNTIME
+// =====================================================
+window.currentSessionId =
+  sessionId;
+
+// =====================================
+// SESSION ANALYTICS RESET
+// =====================================
+
+window.sessionVisitedGrids =
+  new Set();
+
+// =====================================
+// SESSION REPORT COUNTERS
+// =====================================
+
+window.sessionNewMonthlyCellCount =
+  0;
+
+window.sessionNewMonthlyCompartmentCount =
+  0;
+
+// =====================================
+// LEGACY MONTHLY TRACKERS
+// KEEP IF USED ELSEWHERE
+// =====================================
+
+window.newMonthlyCellIds =
+  new Set();
+
+window.newMonthlyCompartmentIds =
+  new Set();
+
+window.newMonthlyGridsCaptured =
+  0;
+    // =====================================
+// RESET LIVE PERFORMANCE
+// =====================================
+
+// =====================================================
+// 🔥 HISTORY STATE ONLY
+// =====================================================
+
+window.sessionTrackCache ??= {};
+
+window.sessionTrackCache[
+  sessionId
+] = [];
+   
+
+console.log(
+  "🟢 SESSION STARTED:",
+  sessionId
+);
+
+window.sessionTrackPoints=[];window.lastTrackPoint=null;window.historyLoaded=false;window.heatmapLoaded=false;window.monthlyHeatmapLayer=null;
 // =====================================================
 // 🔥 DUTY START CONFIRMED
 // -----------------------------------------------------
@@ -135971,7 +134460,7 @@ if(typeof closeDutyForm === "function"){
   } catch (err) {
     console.error("💥 CRASH:", err);
     console.groupEnd();
-  }
+  } finally {startDutySubmitting=false;window.startDutyInProgress=false;}
 }// ✅ FIX: properly closed startDuty
 
     // =====================================================
