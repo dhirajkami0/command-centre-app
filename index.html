@@ -3384,7 +3384,7 @@ function(points){
 // This function is UI/cache access only.
 // ============================================================
 
-window.loadIndividualStaffTrack = function(staffName) {
+window.loadIndividualStaffTrack = function(staffName, options = {}) {
     const name=cleanName(staffName || ''), staff=window.visibleStaffCache?.[name];
     const sessionId=String(staff?.sessionId || '').trim();
     if (!staff || staff.dutyActive!==true || !sessionId) return null;
@@ -3400,7 +3400,7 @@ window.loadIndividualStaffTrack = function(staffName) {
     const points=Object.entries(cache).map(([id,p])=>({...p,id,time:fixTime(p || {})}))
         .filter(p=>Number.isFinite(p.time) && p.time>0)
         .sort((a,b)=>a.time-b.time || String(a.id).localeCompare(String(b.id)));
-    const segments=[];let segment=[],count=0;
+    const segments=[];let segment=[],count=0,previous=null;
     const finish=()=>{if(segment.length)segments.push(segment);segment=[];};
     for(const p of points) {
         const lat=Number(p.lat),lon=Number(p.lon);
@@ -3408,14 +3408,20 @@ window.loadIndividualStaffTrack = function(staffName) {
             !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180 ||
             (lat===0 && lon===0) || (p.sessionId && String(p.sessionId)!==sessionId)) {finish();continue;}
         if(p.breakTrack===true)finish();
+        // Preserve the existing visual teleport limits without changing GPS acceptance/storage.
+        if(previous && typeof map.distance==='function'){
+            const distance=map.distance([Number(previous.lat),Number(previous.lon)],[lat,lon]);
+            const seconds=Math.max(1,(p.time-previous.time)/1000);
+            if(distance>500 || distance/seconds*3.6>120)finish();
+        }
+        previous=p;
         segment.push([lat,lon]);count++;
     }
     finish();
     if(!count)return null;
-    if(window.staffTrackState?.selectedStaff && cleanName(window.staffTrackState.selectedStaff)!==name)
-        window.clearSelectedStaffTrack?.();
+
     window.staffTrackState ??= {bulkEnabled:false,selectedStaff:null};
-    window.staffTrackState.selectedStaff=name;
+    if(options.select!==false)window.staffTrackState.selectedStaff=name;
     window.staffTracks ??= Object.create(null);
     let track=window.staffTracks[name];
     if(track?.__ggStaffTrackSessionId && track.__ggStaffTrackSessionId!==sessionId) {
@@ -3425,18 +3431,33 @@ window.loadIndividualStaffTrack = function(staffName) {
         track=L.polyline([],{color:getUserColor(name),weight:2.5,opacity:.80,smoothFactor:0,lineCap:'round',lineJoin:'round'}).addTo(staffLayer);
         window.staffTracks[name]=track;
     } else if(!staffLayer.hasLayer(track)) track.addTo(staffLayer);
-    for(const dot of track.__ggTrackDots || [])staffLayer.removeLayer(dot);
-    track.__ggTrackDots=[];
-    track.setLatLngs(segments);
-    // A one-point segment has valid bounds but Leaflet polylines have no visible stroke.
-    for(const part of segments)if(part.length===1)track.__ggTrackDots.push(
-        L.circleMarker(part[0],{radius:4,color:getUserColor(name),fillOpacity:.8,weight:1,interactive:false}).addTo(staffLayer));
+    track.__ggTrackHidden=false;
+    const signatures=points.map(p=>JSON.stringify([p.id,p.time,p.lat,p.lon,p.sessionId,p.breakTrack===true]));
+    const old=track.__ggTrackSignatures;
+    const unchanged=old && old.length===signatures.length && old.every((v,i)=>v===signatures[i]);
+    const tail=track.__ggTrackSegments?.at(-1);
+    const appendable=old && signatures.length>old.length && old.every((v,i)=>v===signatures[i]) &&
+        tail?.length>=2 && segments.length===track.__ggTrackSegments.length &&
+        points.slice(old.length).every(p=>p.breakTrack!==true && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon))) &&
+        count===points.length && typeof track.addLatLng==='function';
+    if(appendable){
+        const target=track.getLatLngs().at(-1);
+        for(const p of points.slice(old.length))track.addLatLng([Number(p.lat),Number(p.lon)],target);
+    } else if(!unchanged || track.__ggTrackDotsMissing){
+        for(const dot of track.__ggTrackDots || [])staffLayer.removeLayer(dot);
+        track.__ggTrackDots=[];
+        track.setLatLngs(segments);
+        for(const part of segments)if(part.length===1)track.__ggTrackDots.push(
+            L.circleMarker(part[0],{radius:4,color:getUserColor(name),fillOpacity:.8,weight:1,interactive:false}).addTo(staffLayer));
+    }
+    track.__ggTrackSignatures=signatures;track.__ggTrackSegments=segments;track.__ggTrackDotsMissing=false;
     if(!track.__ggTrackDotCleanupBound) {
         track.__ggTrackDotCleanupBound=true;
-        track.on('remove',()=>{for(const dot of track.__ggTrackDots || [])staffLayer.removeLayer(dot);track.__ggTrackDots=[];});
+        track.on('remove',()=>{for(const dot of track.__ggTrackDots || [])staffLayer.removeLayer(dot);track.__ggTrackDots=[];track.__ggTrackDotsMissing=true;window.StaffTrackNavigation?.sync(name);});
     }
     track.__ggStaffTrackSessionId=sessionId;track.__ggIndividualTrackSessionId=sessionId;
     window.trackPointCount ??= Object.create(null);window.trackPointCount[name]=count;
+    window.StaffTrackNavigation?.sync(name);
     return track;
 };window.sessionTrackPoints = [];
 
@@ -83232,6 +83253,13 @@ function(sessionId, pointSnap, staffMember){
   // ==========================================================
   // 🔥 CHRONOLOGICAL ORDER
   // ----------------------------------------------------------
+  if(staffMember){
+    const name=cleanName(staffMember.cleanName || staffMember.name || ''),track=window.staffTracks?.[name];
+    const owner=window.visibleStaffCache?.[name];
+    if(owner?.dutyActive===true && String(owner.sessionId || '').trim()===sessionId &&
+       track?.__ggIndividualTrackSessionId===sessionId && !track.__ggTrackHidden && staffLayer.hasLayer(track))
+      window.loadIndividualStaffTrack(name,{select:false});
+  }
   // Only sort the NEW batch.
   // Never sort the complete session cache.
   // ==========================================================
@@ -83797,6 +83825,14 @@ function(s, currentSessionId, newPoints){
 
 
   // ==========================================================
+  const incoming=String(currentSessionId || '').trim();
+  const owner=window.visibleStaffCache?.[staffName],existing=window.staffTracks?.[staffName];
+  if(owner?.dutyActive!==true || String(owner.sessionId || '').trim()!==incoming ||
+     (s.sessionId && String(s.sessionId).trim()!==incoming) ||
+     (existing && String(existing.__ggStaffTrackSessionId || existing.__ggIndividualTrackSessionId || '').trim()!==incoming))return;
+  currentSessionId=incoming;
+  newPoints=newPoints.filter(p=>p && (!p.sessionId || String(p.sessionId).trim()===incoming));
+  if(!newPoints.length)return;
   // 3. CREATE LEAFLET POLYLINE IF REQUIRED
   // ----------------------------------------------------------
   // This is purely visual state.
@@ -83844,14 +83880,16 @@ function(s, currentSessionId, newPoints){
       staffName
     ] =
       polyline;
+    polyline.__ggStaffTrackSessionId=currentSessionId;
   }
 
 
   // ==========================================================
   // Selected individual routes are rebuilt from the same cache to retain ordered breaks and singleton dots.
   if (window.staffTracks?.[staffName]?.__ggIndividualTrackSessionId === currentSessionId &&
-      cleanName(window.staffTrackState?.selectedStaff || '') === staffName && !window.staffTrackState?.bulkEnabled) {
-    window.loadIndividualStaffTrack(staffName);return;
+      !window.staffTrackState?.bulkEnabled) {
+    if(window.staffTracks[staffName].__ggTrackHidden || !staffLayer.hasLayer(window.staffTracks[staffName]))return;
+    window.loadIndividualStaffTrack(staffName,{select:false});return;
   }
   // 4. GET EXISTING POLYLINE
   // ==========================================================
@@ -85206,7 +85244,7 @@ window.ensureLiveStaffMarker = function(s, patrolPoint, renderSessionId, lat, lo
                   🧭 NAVIGATE
                 </button>
                 <div class="btr-staff-track-actions">
-                  <button type="button" data-staff-track-action="view">View Track</button>
+                  <button type="button" data-staff-track-action="view">${window.StaffTrackNavigation?.isVisible(staffDistanceKey) ? 'Hide Track' : 'View Track'}</button>
                   <button type="button" data-staff-track-action="zoom">Zoom to Track</button>
                   <button type="button" data-staff-track-action="close">Close</button>
                   <span data-staff-track-status role="status" aria-live="polite"></span>
