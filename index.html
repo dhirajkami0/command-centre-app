@@ -3384,519 +3384,60 @@ function(points){
 // This function is UI/cache access only.
 // ============================================================
 
-window.loadIndividualStaffTrack =
-function(
-    staffName
-){
-
-    try {
-
-        // ====================================================
-        // 🔧 NORMALIZE NAME
-        // ====================================================
-
-        const name =
-            cleanName(
-                staffName || ""
-            );
-
-
-        if(
-            !name
-        ){
-            return;
-        }
-
-
-        // ====================================================
-        // 🔐 AUTHORIZATION
-        // ----------------------------------------------------
-        // Only staff already present in visibleStaffCache
-        // may have an individual track rendered.
-        //
-        // Cache contents NEVER determine authorization.
-        // ====================================================
-
-        const staff =
-            window.visibleStaffCache?.[
-                name
-            ];
-
-
-        if(
-            !staff
-        ){
-
-            console.warn(
-                "🔒 Track blocked — staff not visible:",
-                name
-            );
-
-            return;
-        }
-
-
-        // ====================================================
-        // 👤 CURRENT USER
-        // ----------------------------------------------------
-        // The logged-in user's automatic track remains owned
-        // by the existing live GPS flow.
-        //
-        // Do NOT create another individual UI track here.
-        // ====================================================
-
-        const currentUserName =
-            cleanName(
-                window.userProfile?.cleanName ||
-                window.userProfile?.name ||
-                ""
-            );
-
-
-        if(
-            name === currentUserName
-        ){
-
-            console.log(
-                "👤 Own automatic track already active:",
-                name
-            );
-
-            return;
-        }
-
-
-        // ====================================================
-        // 🔥 SESSION ID
-        // ----------------------------------------------------
-        // Session ID comes from the already-loaded staff cache.
-        //
-        // NO Firestore lookup is performed here.
-        // ====================================================
-
-        const sessionId =
-            String(
-                staff.sessionId || ""
-            )
-            .trim();
-
-
-        if(
-            !sessionId
-        ){
-
-            console.log(
-                "⚠ No active session for:",
-                name
-            );
-
-            return;
-        }
-
-
-        if (window.StaffRendering?.historyPending(sessionId)) return null;
-
-        // ====================================================
-        // 🧹 REMOVE PREVIOUS INDIVIDUAL VISUAL TRACK
-        // ----------------------------------------------------
-        // This removes only the previous selected UI track.
-        //
-        // IMPORTANT:
-        // clearSelectedStaffTrack() must NOT release the
-        // session-owned Firestore listener.
-        //
-        // The session listener remains owned by:
-        //
-        //     patrolSessionListeners[sessionId]
-        //
-        // ====================================================
-
-        if(
-            window.staffTrackState
-                ?.selectedStaff &&
-            cleanName(
-                window.staffTrackState.selectedStaff
-            ) !== name
-        ){
-
-            window.clearSelectedStaffTrack?.();
-
-        }
-
-
-        // ====================================================
-        // 🎯 SAVE CURRENT SELECTION
-        // ====================================================
-
-        window.staffTrackState ??= {
-
-            bulkEnabled:
-                false,
-
-            selectedStaff:
-                null,
-
-            requestId:
-                0,
-
-            loading:
-                false,
-
-            bulkScopeKey:
-                null
-        };
-
-
-        window.staffTrackState.selectedStaff =
-            name;
-
-
-        // ====================================================
-        // 💾 READ CENTRAL SESSION CACHE
-        // ----------------------------------------------------
-        // CENTRAL DATA SOURCE:
-        //
-        //     window.sessionPointCache[sessionId]
-        //
-        // This cache is populated exclusively by the central
-        // session listener:
-        //
-        //     patrolSessionListeners[sessionId]
-        //
-        // Therefore:
-        //
-        //     Firestore reads here = 0
-        //     Firestore listeners here = 0
-        //
-        // ====================================================
-
-        window.sessionPointCache ??=
-            Object.create(null);
-
-
-        const pointMap =
-            window.sessionPointCache[
-                sessionId
-            ];
-
-
-        if(
-            !pointMap ||
-            typeof pointMap !== "object"
-        ){
-
-            console.log(
-                "⏳ Individual track waiting for session cache:",
-                name,
-                sessionId
-            );
-
-            return;
-        }
-
-
-        // ====================================================
-        // 📦 CONVERT CACHE MAP → ARRAY
-        // ----------------------------------------------------
-        // sessionPointCache is keyed by Firestore document ID.
-        //
-        // Do not mutate the central cache.
-        // ====================================================
-
-        const points =
-            Object.values(
-                pointMap
-            )
-            .filter(
-                function(point){
-
-                    if(
-                        !point
-                    ){
-                        return false;
-                    }
-
-
-                    const lat =
-                        Number(
-                            point.lat
-                        );
-
-                    const lon =
-                        Number(
-                            point.lon
-                        );
-
-
-                    return (
-                        Number.isFinite(lat) &&
-                        Number.isFinite(lon)
-                    );
-
-                }
-            )
-            .map(
-                function(point){
-
-                    return {
-
-                        ...point,
-
-                        lat:
-                            Number(
-                                point.lat
-                            ),
-
-                        lon:
-                            Number(
-                                point.lon
-                            ),
-
-                        time:
-                            Number(
-                                point.time || 0
-                            ),
-
-                        breakTrack:
-                            point.breakTrack ===
-                            true
-                    };
-
-                }
-            );
-
-
-        // ====================================================
-        // 📍 NOTHING AVAILABLE YET
-        // ====================================================
-
-        if(
-            points.length === 0
-        ){
-
-            console.log(
-                "⏳ No cached patrol points yet:",
-                name,
-                sessionId
-            );
-
-            return;
-        }
-
-
-        // ====================================================
-        // 🕒 CHRONOLOGICAL ORDER
-        // ----------------------------------------------------
-        // Work on the local array only.
-        // Never reorder pointMap itself.
-        // ====================================================
-
-        points.sort(
-            function(a, b){
-
-                return (
-                    Number(a.time || 0) -
-                    Number(b.time || 0)
-                );
-
-            }
-        );
-
-
-        // ====================================================
-        // 🛰 GET EXISTING INDIVIDUAL POLYLINE
-        // ====================================================
-
-        window.staffTracks ??=
-            Object.create(null);
-
-
-        let polyline =
-            window.staffTracks[
-                name
-            ];
-
-
-        // ====================================================
-        // 🆕 CREATE INDIVIDUAL POLYLINE ONCE
-        // ====================================================
-
-        if(
-            !polyline
-        ){
-
-            polyline =
-                L.polyline(
-                    [],
-                    {
-                        color:
-                            getUserColor(
-                                name
-                            ),
-
-                        weight:
-                            2.5,
-
-                        opacity:
-                            0.80,
-
-                        smoothFactor:
-                            0,
-
-                        lineCap:
-                            "round",
-
-                        lineJoin:
-                            "round"
-                    }
-                )
-                .addTo(
-                    staffLayer
-                );
-
-
-            window.staffTracks[
-                name
-            ] =
-                polyline;
-
-        }
-
-
-        if(
-            !polyline
-        ){
-            return;
-        }
-
-
-        // ====================================================
-        // 📍 BUILD RENDER ARRAY
-        // ----------------------------------------------------
-        // This function is a PURE CACHE/UI CONSUMER.
-        //
-        // Firestore is NEVER accessed here.
-        //
-        // Central session processing is responsible for
-        // receiving and caching patrol points.
-        // ====================================================
-
-        const latLngs =
-            [];
-
-
-        for(
-            const point of points
-        ){
-
-            if(
-                !point
-            ){
-                continue;
-            }
-
-
-            const lat =
-                Number(
-                    point.lat
-                );
-
-            const lon =
-                Number(
-                    point.lon
-                );
-
-
-            if(
-                !Number.isFinite(lat) ||
-                !Number.isFinite(lon)
-            ){
-                continue;
-            }
-
-
-            latLngs.push([
-                lat,
-                lon
-            ]);
-
-        }
-
-
-        // ====================================================
-        // 📍 NOTHING VALID TO RENDER
-        // ====================================================
-
-        if(
-            latLngs.length === 0
-        ){
-            return;
-        }
-
-
-        // ====================================================
-        // ⚡ REPLACE VISUAL ROUTE FROM CENTRAL CACHE
-        // ----------------------------------------------------
-        // setLatLngs() is intentional.
-        //
-        // It prevents duplicate points when the same session
-        // snapshot has already been processed by the central
-        // session listener.
-        // ====================================================
-
-        polyline.setLatLngs(
-            latLngs
-        );
-        polyline.__ggStaffTrackSessionId = sessionId;
-
-
-        // ====================================================
-        // 🔢 KEEP EXISTING POINT COUNT COMPATIBILITY
-        // ----------------------------------------------------
-        // The central processor normally maintains this.
-        // This assignment only ensures the selected staff UI
-        // remains immediately consistent when the user clicks.
-        // ====================================================
-
-        window.trackPointCount ??=
-            Object.create(null);
-
-
-        window.trackPointCount[
-            name
-        ] =
-            points.length;
-
-
-        // ====================================================
-        // 🔍 OPTIONAL MAP FIT
-        // ----------------------------------------------------
-        // Preserve existing selected-track map behavior.
-        // ====================================================
-
-        polyline.__ggStaffTrackSessionId = sessionId;
-
-        console.log(
-            "🟢 INDIVIDUAL TRACK FROM CACHE:",
-            name,
-            sessionId,
-            points.length,
-            "points"
-        );
-        return polyline;
-
-        return polyline;
+window.loadIndividualStaffTrack = function(staffName) {
+    const name=cleanName(staffName || ''), staff=window.visibleStaffCache?.[name];
+    const sessionId=String(staff?.sessionId || '').trim();
+    if (!staff || staff.dutyActive!==true || !sessionId) return null;
+    const cache=window.sessionPointCache?.[sessionId];
+    if (!cache) return null;
+    const fixTime=point=>{
+        if (window.StaffRendering?.pointTime) return window.StaffRendering.pointTime(point);
+        const value=point.time ?? point.gpsTime ?? point.timestamp;
+        if (value?.toMillis) return value.toMillis();
+        if (value?.toDate) return value.toDate().getTime();
+        return typeof value==='string' && !/^\d+$/.test(value) ? Date.parse(value) : Number(value);
+    };
+    const points=Object.entries(cache).map(([id,p])=>({...p,id,time:fixTime(p || {})}))
+        .filter(p=>Number.isFinite(p.time) && p.time>0)
+        .sort((a,b)=>a.time-b.time || String(a.id).localeCompare(String(b.id)));
+    const segments=[];let segment=[],count=0;
+    const finish=()=>{if(segment.length)segments.push(segment);segment=[];};
+    for(const p of points) {
+        const lat=Number(p.lat),lon=Number(p.lon);
+        if (p.lat==null || p.lon==null || p.lat==='' || p.lon==='' ||
+            !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180 ||
+            (lat===0 && lon===0) || (p.sessionId && String(p.sessionId)!==sessionId)) {finish();continue;}
+        if(p.breakTrack===true)finish();
+        segment.push([lat,lon]);count++;
     }
-    catch(err){
-
-        console.error(
-            "❌ loadIndividualStaffTrack failed:",
-            staffName,
-            err
-        );
-
+    finish();
+    if(!count)return null;
+    if(window.staffTrackState?.selectedStaff && cleanName(window.staffTrackState.selectedStaff)!==name)
+        window.clearSelectedStaffTrack?.();
+    window.staffTrackState ??= {bulkEnabled:false,selectedStaff:null};
+    window.staffTrackState.selectedStaff=name;
+    window.staffTracks ??= Object.create(null);
+    let track=window.staffTracks[name];
+    if(track?.__ggStaffTrackSessionId && track.__ggStaffTrackSessionId!==sessionId) {
+        staffLayer.removeLayer(track);delete window.staffTracks[name];track=null;
     }
-
+    if(!track) {
+        track=L.polyline([],{color:getUserColor(name),weight:2.5,opacity:.80,smoothFactor:0,lineCap:'round',lineJoin:'round'}).addTo(staffLayer);
+        window.staffTracks[name]=track;
+    } else if(!staffLayer.hasLayer(track)) track.addTo(staffLayer);
+    for(const dot of track.__ggTrackDots || [])staffLayer.removeLayer(dot);
+    track.__ggTrackDots=[];
+    track.setLatLngs(segments);
+    // A one-point segment has valid bounds but Leaflet polylines have no visible stroke.
+    for(const part of segments)if(part.length===1)track.__ggTrackDots.push(
+        L.circleMarker(part[0],{radius:4,color:getUserColor(name),fillOpacity:.8,weight:1,interactive:false}).addTo(staffLayer));
+    if(!track.__ggTrackDotCleanupBound) {
+        track.__ggTrackDotCleanupBound=true;
+        track.on('remove',()=>{for(const dot of track.__ggTrackDots || [])staffLayer.removeLayer(dot);track.__ggTrackDots=[];});
+    }
+    track.__ggStaffTrackSessionId=sessionId;track.__ggIndividualTrackSessionId=sessionId;
+    window.trackPointCount ??= Object.create(null);window.trackPointCount[name]=count;
+    return track;
 };window.sessionTrackPoints = [];
 
 window.lastTrackPoint = null;
@@ -84307,6 +83848,11 @@ function(s, currentSessionId, newPoints){
 
 
   // ==========================================================
+  // Selected individual routes are rebuilt from the same cache to retain ordered breaks and singleton dots.
+  if (window.staffTracks?.[staffName]?.__ggIndividualTrackSessionId === currentSessionId &&
+      cleanName(window.staffTrackState?.selectedStaff || '') === staffName && !window.staffTrackState?.bulkEnabled) {
+    window.loadIndividualStaffTrack(staffName);return;
+  }
   // 4. GET EXISTING POLYLINE
   // ==========================================================
 
