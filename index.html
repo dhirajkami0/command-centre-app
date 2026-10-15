@@ -19987,10 +19987,92 @@ await window.fb.updateDoc(
 function finalizeSessionLifecycle(endingSessionId) {
   if (!endingSessionId) return;
   if (window.currentSessionId === endingSessionId) window.currentSessionId = null;
-  if (localStorage.getItem('sessionId') === endingSessionId) {
-    localStorage.removeItem('sessionId');
-    localStorage.setItem('dutyActive', 'false');
+  try {
+    if (localStorage.getItem('sessionId') === endingSessionId) {
+      localStorage.removeItem('sessionId');
+      localStorage.setItem('dutyActive', 'false');
+    }
+  } catch (error) {
+    console.warn('Ended-session storage cleanup deferred', error);
   }
+}
+
+// Button reconciliation only. These guards never write Firestore or change GPS caches.
+function dutyStateIdentity(value) {
+  return String(value || '').trim().toUpperCase();
+}
+function dutyClosedSessions(staffId) {
+  const key = dutyStateIdentity(staffId);
+  window.confirmedEndedDutySessions ||= new Map();
+  if (!window.confirmedEndedDutySessions.has(key)) {
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem('confirmedEndedDuty:' + key) || 'null'); }
+    catch (_) {}
+    window.confirmedEndedDutySessions.set(key, new Set(
+      saved?.staffId === key && Array.isArray(saved.sessions)
+        ? saved.sessions.filter(id => typeof id === 'string' && id) : []));
+  }
+  return window.confirmedEndedDutySessions.get(key);
+}
+function rememberEndedDuty(staffId, sessionId) {
+  if (!staffId || !sessionId) return;
+  const key = dutyStateIdentity(staffId), sessions = dutyClosedSessions(key);
+  sessions.add(sessionId);
+  try { localStorage.setItem('confirmedEndedDuty:' + key,
+    JSON.stringify({staffId:key, sessions:[...sessions]})); }
+  catch (error) { console.warn('Ended-session guard retained in this page only', error); }
+}
+function canRestoreDutyState(staffId, sessionId) {
+  return dutyStateIdentity(staffId) === dutyStateIdentity(window.userProfile?.cleanName) &&
+    !!sessionId && !dutyClosedSessions(staffId).has(sessionId);
+}
+function finalizeEndedDutyUi(staffId, sessionId) {
+  if (!sessionId || dutyStateIdentity(staffId) !== dutyStateIdentity(window.userProfile?.cleanName) ||
+      (window.currentSessionId && window.currentSessionId !== sessionId)) return false;
+  window.isDutyActive = false;
+  window.__dutyUpdating = false;
+  window.__dutyChecked = true;
+  finalizeSessionLifecycle(sessionId);
+  updateDutyButton();
+  return true;
+}
+function reconcileRemovedDuty(staffId, sessionId) {
+  const key = dutyStateIdentity(staffId), profile = window.userProfile, db = window.db;
+  if (!sessionId || key !== dutyStateIdentity(profile?.cleanName) ||
+      window.currentSessionId !== sessionId) return Promise.resolve(false);
+  if (dutyClosedSessions(key).has(sessionId)) {
+    return Promise.resolve(finalizeEndedDutyUi(key, sessionId));
+  }
+  window.dutyRemovalChecks ||= new Map();
+  const requestKey = JSON.stringify([key, sessionId]);
+  if (window.dutyRemovalChecks.has(requestKey)) return window.dutyRemovalChecks.get(requestKey);
+  const fb = window.fb;
+  const check = Promise.resolve().then(async () => {
+    if (!fb?.getDoc || !db) return false;
+    // A query removal is not proof of closure. Ignore cache-only/offline results.
+    const [liveSnap, parentSnap] = await Promise.all([
+      fb.getDoc(fb.doc(db, 'live_staff', profile.cleanName)),
+      fb.getDoc(fb.doc(db, 'patrol_tracks', sessionId))
+    ]);
+    if (window.userProfile !== profile || window.db !== db ||
+        window.currentSessionId !== sessionId ||
+        liveSnap.metadata?.fromCache !== false || parentSnap.metadata?.fromCache !== false ||
+        !liveSnap.exists() || !parentSnap.exists()) return false;
+    const live = liveSnap.data(), parent = parentSnap.data();
+    if ((live.cleanName && dutyStateIdentity(live.cleanName) !== key) ||
+        dutyStateIdentity(parent.cleanName) !== key || parent.sessionId !== sessionId ||
+        live.dutyActive !== false || live.status !== 'ENDED' || live.sessionId ||
+        live.lastEndedSessionId !== sessionId || parent.dutyActive !== false || parent.status !== 'ENDED') return false;
+    rememberEndedDuty(key, sessionId);
+    return finalizeEndedDutyUi(key, sessionId);
+  }).catch(error => {
+    console.warn('Duty removal verification deferred; existing state preserved', error);
+    return false;
+  }).finally(() => {
+    if (window.dutyRemovalChecks.get(requestKey) === check) window.dutyRemovalChecks.delete(requestKey);
+  });
+  window.dutyRemovalChecks.set(requestKey, check);
+  return check;
 }
     async function buildGridSpatialIndex(){
 
@@ -29500,6 +29582,20 @@ async function autoShowEndDuty() {
 
     const fireData =
       liveStaffCache[cleanName] || null;
+
+    const cachedDutySession = String(fireData?.sessionId || fireData?.lastEndedSessionId || '').trim();
+    if (window.currentSessionId && cachedDutySession && window.currentSessionId !== cachedDutySession &&
+        dutyClosedSessions(cleanName).has(cachedDutySession)) return;
+    if (fireData?.dutyActive === true && !canRestoreDutyState(cleanName, fireData.sessionId)) {
+      if (dutyClosedSessions(cleanName).has(fireData.sessionId)) {
+        finalizeEndedDutyUi(cleanName, fireData.sessionId);
+      }
+      return;
+    }
+    if (!fireData && window.isDutyActive === true && window.currentSessionId) {
+      await reconcileRemovedDuty(cleanName, window.currentSessionId);
+      return;
+    }
 
 
     // =====================================================
@@ -84035,6 +84131,8 @@ function(s, currentSessionId, newPoints){
             const removedData = docSnap.data() || {};
             const removedSessionId = String(removedData.sessionId || "").trim();
 
+            void reconcileRemovedDuty(docSnap.id, removedSessionId);
+
             if(window.liveStaffPreviousState){
               delete window.liveStaffPreviousState[removedStaffKey];
             }
@@ -84537,12 +84635,8 @@ if (
               );
 
               if (cleanupStaffKey === currentViewerName) {
-                window.isDutyActive = false;
-                window.__dutyUpdating = false;
-                window.__dutyChecked = true;
-                if (typeof updateDutyButton === "function") {
-                  updateDutyButton();
-                }
+                void reconcileRemovedDuty(window.userProfile.cleanName,
+                  String(s.sessionId || window.currentSessionId || '').trim());
               }
 
               window.liveStaffPreviousState[staffKey] = {
@@ -87300,10 +87394,12 @@ staff.forEach(s => {
 
 
 
-              window.isDutyActive = s.dutyActive === true;
-              window.__dutyUpdating = false;
-              window.__dutyChecked = true;
-              updateDutyButton();
+              if (s.dutyActive === true && canRestoreDutyState(s.cleanName, s.sessionId)) {
+                window.isDutyActive = true;
+                window.__dutyUpdating = false;
+                window.__dutyChecked = true;
+                updateDutyButton();
+              }
 
               if(startDutySubmitting){
                 startDutySubmitting = false;
@@ -121193,27 +121289,30 @@ async function submitEndDuty(event) {
     try { result=await closeEndDutySession(endingContext); }
     finally {window.endDutyClosureInProgress=false;}
     lifecycleClosed=true;
-    const ownsCurrent=!window.currentSessionId || window.currentSessionId===sessionId;
-    finalizeSessionLifecycle(sessionId);
+    rememberEndedDuty(endingContext.staffId,sessionId);
+    try {
+    const ownsCurrent=finalizeEndedDutyUi(endingContext.staffId,sessionId);
     if (ownsCurrent) {
-      window.isDutyActive=false;
       // Shared analytics buffers remain owned by the existing live pipeline.
       window.lastTrackPoint=null;
       window.sessionVisitedGrids=new Set();
       window.newMonthlyCellIds=new Set();
       window.newMonthlyCompartmentIds=new Set();
-      window.__dutyUpdating=false;
-      closeEndDutyForm();updateDutyButton();
+      closeEndDutyForm();
       if (typeof removeStaffFromUI==='function') removeStaffFromUI(profile.cleanName);
     }
     delete window.endDutyClosureRequests?.[profile.cleanName];
-    localStorage.removeItem('endDutyClosureRequest:'+profile.cleanName);
+    try {localStorage.removeItem('endDutyClosureRequest:'+profile.cleanName);}
+    catch(error) {console.warn('Closure-request storage cleanup deferred',error);}
     showToast(result.alreadyEnded ? 'Duty already ended. Recovering pending report.' : '✅ Duty ended. Report registration pending.');
+    } finally {
     // Exact stop is issued before another Start can acquire the lifecycle lock.
+    try {
     const stopped=await notifyAndroidDuty(false,sessionId,true);
     if (!stopped && window.Android) {window.endDutyAndroidStopPending=sessionId;
       showToast('Duty ended; exact Android GPS stop is unconfirmed.');}
-    void dutyProcessReport(sessionId);
+    } finally {void dutyProcessReport(sessionId);}
+    }
   } catch(error) {
     console.error('End Duty',error);
     if (lifecycleClosed) {showToast('Duty ended. Report recovery pending.');
@@ -133831,6 +133930,10 @@ await window.fb.runTransaction(window.db,async transaction=>{
   transaction.set(liveRef,liveData,{merge:true});
   transaction.set(trackRef,trackData);
 });
+if (!canRestoreDutyState(cleanLeader, sessionId)) {
+  finalizeEndedDutyUi(cleanLeader, sessionId);
+  return;
+}
 window.dutyStartedAt =
   startMs;
 
