@@ -1453,7 +1453,7 @@ async function(
             // Keep existing cleaner behavior unchanged.
             // =================================================
 
-            const geometry = window.StaffTrackNavigation.geometry(points,sessionId);
+            const geometry = window.StaffTrackNavigation.geometry(window.sessionPointCache?.[sessionId] ?? points,sessionId);
             if(!geometry.count)return false;
             const cleaned=geometry.segments;
 
@@ -1532,14 +1532,14 @@ async function(
 
 
             polyline.__ggStaffTrackSessionId=sessionId;
-            polyline.__ggTrackHasLine=cleaned.some(segment=>segment.length>=2);
             polyline.__ggTrackHidden=window.StaffTrackNavigation.isHidden(name,sessionId);
             const individual=window.staffTracks?.[name];
-            if(polyline.__ggTrackHasLine && individual?.__ggStaffTrackSessionId===sessionId)
+            if(geometry.count && individual?.__ggStaffTrackSessionId===sessionId)
                 staffLayer.removeLayer(individual);
-            if(polyline.__ggTrackHidden || (!polyline.__ggTrackHasLine && individual?.__ggStaffTrackSessionId===sessionId))
+            if(polyline.__ggTrackHidden)
                 window.bulkStaffTrackLayer.removeLayer(polyline);
             else if(!window.bulkStaffTrackLayer.hasLayer(polyline))polyline.addTo(window.bulkStaffTrackLayer);
+            window.StaffTrackNavigation.updateBulkGeometry(polyline,geometry,name);
             window.StaffTrackNavigation.sync(name);
 
             return true;
@@ -3290,7 +3290,7 @@ window.loadIndividualStaffTrack = function(staffName, options = {}) {
     const tail=track.__ggTrackSegments?.at(-1);
     const appendable=old && signatures.length>old.length && old.every((v,i)=>v===signatures[i]) &&
         tail?.length>=2 && segments.length===track.__ggTrackSegments.length &&
-        points.slice(old.length).every(p=>p.breakTrack!==true && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon))) &&
+        points.slice(old.length).every(p=>Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon))) &&
         count===points.length && typeof track.addLatLng==='function';
     if(appendable){
         const target=track.getLatLngs().at(-1);

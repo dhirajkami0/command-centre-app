@@ -23,22 +23,29 @@
  function geometry(cache,sessionId){
   const points=Object.entries(cache||{}).map(([id,p])=>({...p,id,time:pointTime(p)}))
    .filter(p=>p.time>0).sort((a,b)=>a.time-b.time||String(a.id).localeCompare(String(b.id)));
-  const segments=[];let segment=[],count=0,previous=null;
-  const finish=()=>{if(segment.length)segments.push(segment);segment=[];};
+  // Display only: connect accepted stored fixes, never use this line as measured distance/coverage.
+  const segment=[];let count=0;
   for(const p of points){
    const lat=Number(p.lat),lon=Number(p.lon);
    if(p.lat==null||p.lon==null||String(p.lat).trim()===''||String(p.lon).trim()===''||
       !['number','string'].includes(typeof p.lat)||!['number','string'].includes(typeof p.lon)||!Number.isFinite(lat)||!Number.isFinite(lon)||
       Math.abs(lat)>90||Math.abs(lon)>180||(lat===0&&lon===0)||
-      (p.sessionId&&String(p.sessionId).trim()!==sessionId)){finish();previous=null;continue;}
-   if(p.breakTrack===true){finish();previous=null;}
-   if(previous&&typeof w.map.distance==='function'){
-    const distance=w.map.distance([Number(previous.lat),Number(previous.lon)],[lat,lon]);
-    if(!Number.isFinite(distance)||distance>500||distance/Math.max(1,(p.time-previous.time)/1000)*3.6>120)finish();
-   }
-   previous=p;segment.push([lat,lon]);count++;
+      (p.sessionId&&String(p.sessionId).trim()!==sessionId))continue;
+   segment.push([lat,lon]);count++;
   }
-  finish();return{points,segments,count};
+  return{points,segments:count?[segment]:[],count};
+ }
+ function updateBulkGeometry(track,data,name){
+  const layer=w.bulkStaffTrackLayer;
+  track.setLatLngs(data.segments);
+  track.__ggTrackHasLine=data.count>=2;track.__ggTrackHasDot=data.count===1;
+  for(const dot of track.__ggTrackDots||[])layer.removeLayer(dot);
+  track.__ggTrackDots=[];
+  if(data.count===1&&!track.__ggTrackHidden&&layer.hasLayer(track))track.__ggTrackDots.push(
+   w.L.circleMarker(data.segments[0][0],{radius:4,color:w.getUserColor(name),fillOpacity:.8,weight:1,interactive:false}).addTo(layer));
+  if(!track.__ggBulkDotCleanupBound){track.__ggBulkDotCleanupBound=true;track.on('remove',()=>{
+   for(const dot of track.__ggTrackDots||[])layer.removeLayer(dot);track.__ggTrackDots=[];
+  });}
  }
  const canonical=name=>w.cleanName(String(name||''));
  function profile(name){const key=canonical(name),s=w.visibleStaffCache?.[key],sessionId=String(s?.sessionId||'').trim();return s?.dutyActive===true&&sessionId&&canonical(s.cleanName || s.name || key)===key?{key,sessionId,staff:s,viewer:w.userProfile,db:w.db}:null;}
@@ -46,7 +53,7 @@
   {track:w.staffTracks?.[p.key],layer:w.staffLayer,bulk:false},
   {track:w.bulkStaffTracks?.[p.key],layer:w.bulkStaffTrackLayer,bulk:true}
  ].filter(e=>e.track?.__ggStaffTrackSessionId===p.sessionId):[];}
- function visible(e){return !e.track.__ggTrackHidden&&(!e.bulk||w.staffTrackState?.bulkEnabled&&e.track.__ggTrackHasLine!==false)&&
+ function visible(e){return !e.track.__ggTrackHidden&&(!e.bulk||w.staffTrackState?.bulkEnabled&&(e.track.__ggTrackHasLine!==false||e.track.__ggTrackHasDot))&&
   !!e.layer?.hasLayer(e.track)&&w.map.hasLayer?.(e.layer)!==false;}
  function isVisible(name){return owned(profile(name)).some(visible);}
  function sync(name){const marker=w.staffMarkers?.[canonical(name)],root=marker?.getPopup?.()?.getElement?.();const button=root?.querySelector?.('[data-staff-track-action="view"]');if(button){button.textContent=isVisible(name)?'Hide Track':'View Track';button.setAttribute('aria-pressed',String(isVisible(name)));}}
@@ -76,11 +83,11 @@
    return unavailable(p);
   }
   if(data?.count)for(const e of owned(p))if(e.bulk){
-   e.track.setLatLngs(data.segments);e.track.__ggTrackHasLine=data.segments.some(segment=>segment.length>=2);
+   updateBulkGeometry(e.track,data,p.key);
   }
-  const bulk=owned(p).find(e=>e.bulk&&e.track.__ggTrackHasLine!==false);
+  const bulk=owned(p).find(e=>e.bulk&&(e.track.__ggTrackHasLine!==false||e.track.__ggTrackHasDot));
   let track;
-  if(w.staffTrackState?.bulkEnabled&&bulk){track=bulk.track;track.__ggTrackHidden=false;track.addTo(bulk.layer);}
+  if(w.staffTrackState?.bulkEnabled&&bulk){track=bulk.track;track.__ggTrackHidden=false;track.addTo(bulk.layer);if(data)updateBulkGeometry(track,data,p.key);}
   else track=w.loadIndividualStaffTrack(p.key);
   if(!track)return unavailable(p);
   if(!current(p,id)||track.__ggStaffTrackSessionId!==p.sessionId)return{ok:false,message:'Track selection or duty session changed.'};
@@ -99,7 +106,16 @@
  }
  function publish(p,value){const marker=w.staffMarkers?.[p.key],root=marker?.getPopup?.()?.getElement?.();
   if(marker?.isPopupOpen?.()){const status=root?.querySelector?.('[data-staff-track-status]');if(status)status.textContent=value.message;sync(p.key);}}
- function onSessionUpdate(sessionId){const pending=selection;if(!pending||pending.p.sessionId!==sessionId)return;
+ function onSessionUpdate(sessionId){
+  if(w.staffTrackState?.bulkEnabled){
+   const staff=w.patrolSessionStaff?.[sessionId],name=staff&&canonical(staff.cleanName||staff.name),owner=name&&profile(name);
+   if(owner?.sessionId===sessionId){
+    const track=w.bulkStaffTracks?.[name];
+    if(track?.__ggStaffTrackSessionId===sessionId)updateBulkGeometry(track,geometry(w.sessionPointCache?.[sessionId],sessionId),name);
+    else if(typeof w.loadBulkStaffTrack==='function')void w.loadBulkStaffTrack(name,w.staffTrackState.requestId);
+   }
+  }
+  const pending=selection;if(!pending||pending.p.sessionId!==sessionId)return;
   if(!current(pending.p,pending.id)){selection=null;return;}
   const value=render(pending.p,pending.id,pending.fit);if(value.ok)pending.fit=false;
   publish(pending.p,value);
@@ -136,5 +152,5 @@
   });
  }
  w.StaffTrackNavigation={view:name=>action(name,false),zoom:name=>action(name,true),hide,isVisible,sync,bindPopup,
-  pointTime,geometry,onSessionUpdate,isHidden:(name,id)=>hidden.get(canonical(name))===id};
+  pointTime,geometry,updateBulkGeometry,onSessionUpdate,isHidden:(name,id)=>hidden.get(canonical(name))===id};
 })(window);
