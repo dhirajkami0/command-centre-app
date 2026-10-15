@@ -387,125 +387,15 @@ window.sessionTrackCache ??=
 
 window.normalizeSessionTrackPoint =
 function(point){
-
-    if(
-        !point
-    ){
-        return null;
-    }
-
-
-    const lat =
-        Number(
-            point.lat ??
-            point[0]
-        );
-
-
-    const lon =
-        Number(
-            point.lon ??
-            point.lng ??
-            point[1]
-        );
-
-
-    if(
-        !Number.isFinite(lat) ||
-        !Number.isFinite(lon)
-    ){
-        return null;
-    }
-
-
-    // ========================================================
-    // 🕒 TIME
-    // ========================================================
-
-    let time = "";
-
-
-    const rawTime =
-        point.time ??
-        point.ts ??
-        "";
-
-
-    if(
-        typeof rawTime === "string"
-    ){
-
-        time =
-            rawTime.trim();
-
-    }
-
-    else if(
-        typeof rawTime?.toDate ===
-        "function"
-    ){
-
-        // Future-safe Firestore Timestamp support
-
-        try {
-
-            time =
-                rawTime
-                    .toDate()
-                    .toISOString();
-
-        }
-        catch(err){
-
-            time = "";
-
-        }
-
-    }
-
-    else if(
-        Number.isFinite(
-            Number(rawTime)
-        ) &&
-        Number(rawTime) > 0
-    ){
-
-        // Future-safe numeric timestamp support
-
-        try {
-
-            time =
-                new Date(
-                    Number(rawTime)
-                )
-                .toISOString();
-
-        }
-        catch(err){
-
-            time = "";
-
-        }
-
-    }
-
-
-    return {
-
-        lat:
-            lat,
-
-        lon:
-            lon,
-
-        time:
-            time,
-
-        breakTrack:
-            point.breakTrack === true
-
-    };
-
+    if(!point)return null;
+    const latRaw=point.lat ?? point[0],lonRaw=point.lon ?? point.lng ?? point[1];
+    if(latRaw==null||lonRaw==null||String(latRaw).trim()===''||String(lonRaw).trim()===''||
+       !['number','string'].includes(typeof latRaw)||!['number','string'].includes(typeof lonRaw))return null;
+    const lat=Number(latRaw),lon=Number(lonRaw),time=window.StaffTrackNavigation.pointTime(point);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180||
+       (lat===0&&lon===0)||!time)return null;
+    return {lat,lon,time:new Date(time).toISOString(),breakTrack:point.breakTrack===true,
+        ...(point.sessionId?{sessionId:String(point.sessionId).trim()}: {})};
 };
 
 
@@ -1191,6 +1081,13 @@ function(){
         Object.create(null);
 
 
+    // Remove only individual layers used as popup fallbacks for the cleared bulk mode.
+    for(const [name,track] of Object.entries(window.staffTracks || {})){
+        if(!track?.__ggPopupBulkFallback)continue;
+        staffLayer.removeLayer(track);
+        delete window.staffTracks[name];
+    }
+
     console.log(
         "🧹 Bulk staff tracks cleared"
     );
@@ -1556,46 +1453,9 @@ async function(
             // Keep existing cleaner behavior unchanged.
             // =================================================
 
-            const cleaned =
-                cleanTrackPoints(
-
-                    points.map(
-                        function(p){
-
-                            return [
-
-                                Number(
-                                    p?.lat
-                                ),
-
-                                Number(
-                                    p?.lon
-                                )
-
-                            ];
-
-                        }
-                    )
-
-                );
-
-
-            if(
-                !Array.isArray(
-                    cleaned
-                ) ||
-
-                cleaned.length === 0
-            ){
-
-                return false;
-
-            }
-
-
-            // =================================================
-            // 🛰 EXISTING BULK POLYLINE
-            // =================================================
+            const geometry = window.StaffTrackNavigation.geometry(points,sessionId);
+            if(!geometry.count)return false;
+            const cleaned=geometry.segments;
 
             let polyline =
                 window.bulkStaffTracks?.[
@@ -1606,6 +1466,10 @@ async function(
             // =================================================
             // 🆕 CREATE POLYLINE
             // =================================================
+
+            if(polyline?.__ggStaffTrackSessionId && polyline.__ggStaffTrackSessionId!==sessionId){
+                window.bulkStaffTrackLayer.removeLayer(polyline);polyline=null;
+            }
 
             if(
                 !polyline
@@ -1666,6 +1530,17 @@ async function(
 
             }
 
+
+            polyline.__ggStaffTrackSessionId=sessionId;
+            polyline.__ggTrackHasLine=cleaned.some(segment=>segment.length>=2);
+            polyline.__ggTrackHidden=window.StaffTrackNavigation.isHidden(name,sessionId);
+            const individual=window.staffTracks?.[name];
+            if(polyline.__ggTrackHasLine && individual?.__ggStaffTrackSessionId===sessionId)
+                staffLayer.removeLayer(individual);
+            if(polyline.__ggTrackHidden || (!polyline.__ggTrackHasLine && individual?.__ggStaffTrackSessionId===sessionId))
+                window.bulkStaffTrackLayer.removeLayer(polyline);
+            else if(!window.bulkStaffTrackLayer.hasLayer(polyline))polyline.addTo(window.bulkStaffTrackLayer);
+            window.StaffTrackNavigation.sync(name);
 
             return true;
 
@@ -3390,35 +3265,12 @@ window.loadIndividualStaffTrack = function(staffName, options = {}) {
     if (!staff || staff.dutyActive!==true || !sessionId) return null;
     const cache=window.sessionPointCache?.[sessionId];
     if (!cache) return null;
-    const fixTime=point=>{
-        if (window.StaffRendering?.pointTime) return window.StaffRendering.pointTime(point);
-        const value=point.time ?? point.gpsTime ?? point.timestamp;
-        if (value?.toMillis) return value.toMillis();
-        if (value?.toDate) return value.toDate().getTime();
-        return typeof value==='string' && !/^\d+$/.test(value) ? Date.parse(value) : Number(value);
-    };
-    const points=Object.entries(cache).map(([id,p])=>({...p,id,time:fixTime(p || {})}))
-        .filter(p=>Number.isFinite(p.time) && p.time>0)
-        .sort((a,b)=>a.time-b.time || String(a.id).localeCompare(String(b.id)));
-    const segments=[];let segment=[],count=0,previous=null;
-    const finish=()=>{if(segment.length)segments.push(segment);segment=[];};
-    for(const p of points) {
-        const lat=Number(p.lat),lon=Number(p.lon);
-        if (p.lat==null || p.lon==null || p.lat==='' || p.lon==='' ||
-            !Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat)>90 || Math.abs(lon)>180 ||
-            (lat===0 && lon===0) || (p.sessionId && String(p.sessionId)!==sessionId)) {finish();continue;}
-        if(p.breakTrack===true)finish();
-        // Preserve the existing visual teleport limits without changing GPS acceptance/storage.
-        if(previous && typeof map.distance==='function'){
-            const distance=map.distance([Number(previous.lat),Number(previous.lon)],[lat,lon]);
-            const seconds=Math.max(1,(p.time-previous.time)/1000);
-            if(distance>500 || distance/seconds*3.6>120)finish();
-        }
-        previous=p;
-        segment.push([lat,lon]);count++;
+    const {points,segments,count}=window.StaffTrackNavigation.geometry(cache,sessionId);
+    if(!count){
+        const stale=window.staffTracks?.[name];
+        if(stale?.__ggStaffTrackSessionId===sessionId){staffLayer.removeLayer(stale);delete window.staffTracks[name];}
+        return null;
     }
-    finish();
-    if(!count)return null;
 
     window.staffTrackState ??= {bulkEnabled:false,selectedStaff:null};
     if(options.select!==false)window.staffTrackState.selectedStaff=name;
@@ -82771,10 +82623,11 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
         window.userProfile?.role || '', window.userProfile?.division || '', window.userProfile?.range || '']);
       let recovery = window.patrolSessionRecovery[sessionId];
       if (!recovery || recovery.scope !== scope || recovery.db !== window.db) {
+        if (recovery?.retryTimer != null) clearTimeout(recovery.retryTimer);
         if (recovery) recovery.generation = null;
         try { window.patrolSessionListeners[sessionId]?.(); } catch (_) {}
         delete window.patrolSessionListeners[sessionId];
-        recovery = window.patrolSessionRecovery[sessionId] = {scope, db: window.db, failures: 0, until: 0, blocked: false};
+        recovery = window.patrolSessionRecovery[sessionId] = {scope, db: window.db, failures: 0, until: 0, blocked: false, state:'loading', retryTimer:null};
       }
       const authorized = window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')];
       if (authorized?.dutyActive !== true || String(authorized.sessionId || '').trim() !== sessionId) return false;
@@ -82790,6 +82643,8 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
         }
         return true;
       }
+      if(recovery.retryTimer != null){clearTimeout(recovery.retryTimer);recovery.retryTimer=null;}
+      recovery.state='loading';
 
       // ------------------------------------------------------
       // SAVE SESSION OWNER METADATA
@@ -82802,15 +82657,13 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
 
       const {
         collection: collFb,
-        query: queryFb,
-        orderBy: orderByFb,
         onSnapshot: onSnapFb
       } = window.fb;
 
-      const pointsRef = queryFb(
-        collFb(window.db, "patrol_tracks", sessionId, "points"),
-        orderByFb("time")
-      );
+      // The same singleton full-duty listener stays bounded to this exact session.
+      // Do not order by a possibly absent legacy field: timestamp-only points must reach the cache.
+      // Ordering is performed from normalized capture time, without extra queries/listeners.
+      const pointsRef = collFb(window.db, "patrol_tracks", sessionId, "points");
 
       // ------------------------------------------------------
       // 🔥 THE ONE AND ONLY PATROL POINT onSnapshot OWNER
@@ -82834,10 +82687,24 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
         recovery.generation = null;
         try { unsubscribe?.(); } catch (_) {}
         delete window.patrolSessionListeners[sessionId];
-        const code = window.FirestoreRecovery?.classify(error) || String(error?.code || 'unknown').replace(/^firestore\//, '');
+        const code = String(error?.code || '').replace(/^firestore\//, '') || window.FirestoreRecovery?.classify(error) || 'unknown';
         recovery.failures++;
-        recovery.blocked = code === 'permission-denied';
+        recovery.blocked = ['permission-denied','unauthenticated','failed-precondition','invalid-argument'].includes(code);
         recovery.until = Date.now() + Math.min(300000, (code === 'resource-exhausted' ? 60000 : 15000) * 2 ** (recovery.failures - 1));
+        recovery.state = recovery.blocked ? 'denied' : recovery.failures < 3 ? 'retry-wait' : 'failed';
+        window.StaffRendering?.completeHistory(sessionId); // Settle loading; preserve the explicit error state.
+        window.StaffTrackNavigation?.onSessionUpdate(sessionId);
+        if(!recovery.blocked && recovery.failures < 3){
+          recovery.retryTimer=setTimeout(()=>{
+            recovery.retryTimer=null;
+            if(window.patrolSessionRecovery?.[sessionId]!==recovery || recovery.generation!==null ||
+               recovery.db!==window.db || recovery.scope!==JSON.stringify([window.userProfile?.cleanName || window.userProfile?.name || '',
+                 window.userProfile?.role || '',window.userProfile?.division || '',window.userProfile?.range || '']))return;
+            const owner=window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')];
+            if(owner?.dutyActive===true && String(owner.sessionId || '').trim()===sessionId)
+              window.ensurePatrolSessionListener(sessionId,owner);
+          },Math.max(0,recovery.until-Date.now()));
+        }
         console.error('PATROL SESSION LISTENER ERROR:', sessionId, error);
       };
       try { unsubscribe = onSnapFb(
@@ -82845,7 +82712,6 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
         {includeMetadataChanges: true},
         pointSnap => {
           if (!stillOwned()) return;
-          if (pointSnap.metadata?.fromCache === false) { recovery.failures = 0; recovery.until = 0; }
           try {
             const ownerStaff = window.patrolSessionStaff[sessionId] || staff;
             const diagnostic = window.StaffStartupDiagnostics;
@@ -82855,8 +82721,11 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
             window.processPatrolSessionSnapshot(sessionId, pointSnap, ownerStaff);
             diagnostic?.processing(sessionId, {historyProcessingMs: diagnostic.now() - began});
             window.StaffRendering?.completeHistory(sessionId, pointSnap);
+            if(pointSnap.metadata?.fromCache===false){recovery.failures=0;recovery.until=0;recovery.state='ready';}
+            window.StaffTrackNavigation?.onSessionUpdate(sessionId);
           } catch(error){
             console.error("❌ PATROL SESSION SNAPSHOT PROCESSING ERROR:", sessionId, error);
+            failed(error);
           }
         },
         failed
@@ -82883,6 +82752,8 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       if(!sessionId) return;
       window.StaffLiveGps?.release(sessionId);
       if (window.patrolSessionRecovery?.[sessionId]) {
+        if(window.patrolSessionRecovery[sessionId].retryTimer != null)
+          clearTimeout(window.patrolSessionRecovery[sessionId].retryTimer);
         window.patrolSessionRecovery[sessionId].generation = null;
         delete window.patrolSessionRecovery[sessionId];
       }
@@ -83189,6 +83060,9 @@ function(sessionId, pointSnap, staffMember){
       if(
         !Number.isFinite(lat) ||
         !Number.isFinite(lon)
+        || data.lat==null || data.lon==null || String(data.lat).trim()==='' || String(data.lon).trim()===''
+        || !['number','string'].includes(typeof data.lat) || !['number','string'].includes(typeof data.lon)
+        || Math.abs(lat)>90 || Math.abs(lon)>180 || (lat===0 && lon===0)
       ){
         if(existed){
           delete pointCache[pointId];
@@ -83202,62 +83076,7 @@ function(sessionId, pointSnap, staffMember){
       // 🕒 NORMALIZE POINT TIME
       // ======================================================
 
-      const rawPointTime =
-        data.time ??
-        data.timestamp ??
-        "";
-
-      let pointTime =
-        0;
-
-
-      if(
-        typeof rawPointTime ===
-        "string"
-      ){
-
-        const parsed =
-          Date.parse(rawPointTime);
-
-        if(
-          Number.isFinite(parsed)
-        ){
-          pointTime =
-            parsed;
-        }
-
-      }
-      else if(
-        typeof rawPointTime?.toDate ===
-        "function"
-      ){
-
-        try{
-
-          pointTime =
-            rawPointTime
-              .toDate()
-              .getTime();
-
-        }
-        catch(err){
-
-          pointTime =
-            0;
-        }
-
-      }
-      else if(
-        Number.isFinite(
-          Number(rawPointTime)
-        ) &&
-        Number(rawPointTime) > 0
-      ){
-
-        pointTime =
-          Number(rawPointTime);
-      }
-
+      const pointTime = window.StaffTrackNavigation.pointTime(data);
 
       // ======================================================
       // 📦 CENTRAL NORMALIZED POINT
