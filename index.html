@@ -10904,6 +10904,18 @@ setTimeout(() => {
         );
 
 
+      // Lifecycle queries need server authority, not a temporary Listen stream.
+      // Lite shares this SAME Firebase app's Auth/App Check providers. No Admin or fallback identity.
+      let dutyReadModule;
+      window.queryDutyActiveParents = async staff => {
+        const lite = await (dutyReadModule ||= import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-lite.js')
+          .catch(error => {dutyReadModule=null;throw error;}));
+        const queryDb=lite.getFirestore(app);
+        return lite.getDocs(lite.query(lite.collection(queryDb,'patrol_tracks'),
+          lite.and(lite.where('cleanName','==',staff),
+            lite.or(lite.where('dutyActive','==',true),lite.where('status','==','ACTIVE')))));
+      };
+
       // ==========================================================
       // 🔥 FIRESTORE DATABASE
       //
@@ -120570,7 +120582,7 @@ async function closeEndDutySession(context) {
   if (!window.db || typeof window.fb?.runTransaction !== 'function') throw new Error('Firestore is not ready');
   const liveRef = window.fb.doc(window.db, 'live_staff', staffId);
   const trackRef = window.fb.doc(window.db, 'patrol_tracks', sessionId);
-  return window.fb.runTransaction(window.db, async transaction => {
+  return dutyMeasure('end.transaction',()=>window.fb.runTransaction(window.db, async transaction => {
     const liveSnap = await transaction.get(liveRef);
     const trackSnap = await transaction.get(trackRef);
     if (!liveSnap.exists() || !trackSnap.exists()) throw new Error('Duty documents missing; no session was changed');
@@ -120616,7 +120628,7 @@ async function closeEndDutySession(context) {
         'location','timestamp','time','gpsTime','lastSeen'].map(key => [key, window.fb.deleteField()]))
     });
     return {alreadyEnded:false, endedAt:endAtMs, dutyStartedAt:track.startedAt, telemetry};
-  });
+  }));
 }
 
 function recordEndDutyReportState(context, state, failures = [], reportStage = null) {
@@ -121093,19 +121105,19 @@ async function submitEndDuty(event) {
       return;
     }
 
-    endingContext = captureEndDutyContext(profile);
+    endingContext = await dutyMeasure('end.capture',()=>captureEndDutyContext(profile));
     const sessionId=endingContext.sessionId;
-    // Preserve RAM before closure can detach the existing GPS listener.
-    const savedPoints=await loadPatrolPointsFromIDB(sessionId);
-    const cachePoints=window.sessionPointCache?.[sessionId] || {};
-    await savePatrolPointsToIDB(sessionId, [...Object.values(savedPoints || {}),...Object.values(cachePoints)]);
+    // Snapshot session-owned RAM before the confirmed closure can detach its listener.
+    const cachePoints=Object.values(window.sessionPointCache?.[sessionId] || {}).map(point=>({...point}));
     window.endDutyClosureInProgress=true;
     let result;
+    const closureNotice=setTimeout(()=>showToast('Awaiting End Duty server confirmation. Do not start another duty.'),20000);
     try { result=await closeEndDutySession(endingContext); }
-    finally {window.endDutyClosureInProgress=false;}
+    finally {clearTimeout(closureNotice);window.endDutyClosureInProgress=false;}
     lifecycleClosed=true;
     rememberEndedDuty(endingContext.staffId,sessionId);
     try {
+    removeConfirmedDutyMarker(endingContext.staffId,sessionId);
     const ownsCurrent=finalizeEndedDutyUi(endingContext.staffId,sessionId);
     if (ownsCurrent) {
       // Shared analytics buffers remain owned by the existing live pipeline.
@@ -121114,25 +121126,31 @@ async function submitEndDuty(event) {
       window.newMonthlyCellIds=new Set();
       window.newMonthlyCompartmentIds=new Set();
       closeEndDutyForm();
-      if (typeof removeStaffFromUI==='function') removeStaffFromUI(profile.cleanName);
+      // The exact-session ACTIVE marker was removed immediately after confirmed closure.
     }
-    delete window.endDutyClosureRequests?.[profile.cleanName];
-    try {localStorage.removeItem('endDutyClosureRequest:'+profile.cleanName);}
-    catch(error) {console.warn('Closure-request storage cleanup deferred',error);}
+    // Keep the captured closure context until the exact-session native stop is acknowledged.
     showToast(result.alreadyEnded ? 'Duty already ended. Recovering pending report.' : '✅ Duty ended. Report registration pending.');
     } finally {
     // Exact stop is issued before another Start can acquire the lifecycle lock.
     try {
-    const stopped=await notifyAndroidDuty(false,sessionId,true);
+    const stopRequest=dutyMeasure('end.androidStop',()=>notifyAndroidDuty(false,sessionId,true));
+    queueEndedHistory(sessionId,cachePoints);
+    void dutyProcessReport(sessionId);
+    const stopped=await stopRequest;
     if (!stopped && window.Android) {window.endDutyAndroidStopPending=sessionId;
       showToast('Duty ended; exact Android GPS stop is unconfirmed.');}
-    } finally {void dutyProcessReport(sessionId);}
+    else {
+      if(window.endDutyAndroidStopPending===sessionId)delete window.endDutyAndroidStopPending;
+      delete window.endDutyClosureRequests?.[profile.cleanName];
+      try {localStorage.removeItem('endDutyClosureRequest:'+profile.cleanName);}catch(error){console.warn('Closure-request cleanup deferred',error);}
+    }
+    } finally { /* Reporting has its own durable, separately retriable job. */ }
     }
   } catch(error) {
     console.error('End Duty',error);
     if (lifecycleClosed) {showToast('Duty ended. Report recovery pending.');
       if (endingContext) void dutyProcessReport(endingContext.sessionId);}
-    else alert('End Duty failed: '+error.message);
+    else alert('End Duty was not confirmed. Keep this session and retry End Duty before starting another. '+error.message);
   } finally {
     if (ownsEndDutyLock) {window.endDutyInProgress=false;window.endDutyClosureInProgress=false;}
     console.groupEnd();
@@ -133176,6 +133194,86 @@ window.onAndroidLocationPermissionDenied = function () {
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
  let startDutySubmitting = false;
 
+// Bounded, local-only performance evidence; never contains coordinates, credentials or report payloads.
+async function dutyMeasure(stage, work) {
+  const began=performance.now();let outcome='success',code='';
+  try {return await work();}
+  catch(error){outcome='error';code=String(error?.code || 'unknown');throw error;}
+  finally {
+    const entry={stage,ms:Math.round(performance.now()-began),outcome,code};
+    window.dutyLifecycleTimings ||= [];window.dutyLifecycleTimings.push(entry);
+    if(window.dutyLifecycleTimings.length>80)window.dutyLifecycleTimings.shift();
+    console.info('DUTY_STAGE',entry);
+  }
+}
+function showConfirmedDutyStart(staff, seed) {
+  const name=cleanName(staff.cleanName),id=String(staff.sessionId || '').trim();
+  // Existing visibility policy explicitly permits SELF. Never authorize another staff here.
+  if(!id || staff.dutyActive!==true || name!==cleanName(window.userProfile?.cleanName) ||
+      !canRestoreDutyState(staff.cleanName,id))return false;
+  const metadata={...staff,type:'Staff',documentId:staff.cleanName};
+  for(const field of ['lat','lon','lng','time','timestamp','gpsTime','accuracy','speed','heading','lastSeen','updatedAt'])delete metadata[field];
+  const existing=window.visibleStaffCache?.[name];
+  if(existing?.sessionId===id)metadata.__liveGpsPoint=existing.__liveGpsPoint;
+  window.visibleStaffCache ||= {};window.liveStaffCache ||= {};window.patrolSessionStaff ||= {};
+  window.visibleStaffCache[name]=metadata;window.liveStaffCache[name]={...metadata};
+  window.patrolSessionStaff[id]=metadata;
+  window.confirmedDutyStartFix=seed;
+  if(typeof window.ensureLiveStaffMarker==='function'){
+    const point=window.getLatestPatrolPointForSession?.(id) || seed;
+    window.ensureLiveStaffMarker(metadata,point,id,Number(point.lat),Number(point.lon));
+  }
+  return true;
+}
+function removeConfirmedDutyMarker(staffId,sessionId) {
+  const name=cleanName(staffId),marker=window.staffMarkers?.[name];
+  // Never remove a replacement session's marker, identity or listener.
+  if(marker?.__staffSession===sessionId){
+    marker.remove();delete window.staffMarkers[name];
+  }
+  for(const cache of [window.visibleStaffCache,window.liveStaffCache])
+    if(cache?.[name]?.sessionId===sessionId)delete cache[name];
+  if(window.activeSessionMap?.[name]===sessionId)delete window.activeSessionMap[name];
+  window.patrolSessionRequired?.delete(sessionId);
+  try {
+    const key='pendingDutyStart:'+staffId,pending=JSON.parse(localStorage.getItem(key) || 'null');
+    if(pending?.staff===staffId && pending.sessionId===sessionId)localStorage.removeItem(key);
+  } catch(error){console.warn('Closed-session pending-start cleanup deferred',error);}
+  // Point history is preserved separately; use the existing generation-safe cleanup owner.
+  window.releasePatrolSessionListener?.(sessionId);
+}
+function queueEndedHistory(sessionId,points) {
+  // No IndexedDB wait is on the lifecycle/UI path. Server point history remains authoritative.
+  void dutyMeasure('end.historyCache',async()=>{
+    const saved=await loadPatrolPointsFromIDB(sessionId);
+    await savePatrolPointsToIDB(sessionId,[...Object.values(saved || {}),...points]);
+  }).catch(error=>console.warn('Ended-session device history cache retry required',error));
+}
+async function reconcilePendingDutyEnd(staffId) {
+  const raw=localStorage.getItem('endDutyClosureRequest:'+staffId);
+  if(!raw)return;
+  const context=JSON.parse(raw),id=context?.sessionId;
+  if(context.staffId!==staffId || !id || id.includes('/'))throw Error('Pending End Duty identity requires reconciliation');
+  // Only an unresolved End adds these reads; ordinary Start has no extra preflight.
+  const ended=await startDutyDeadline(dutyMeasure('start.reconcileEnd',()=>window.fb.runTransaction(window.db,async tx=>{
+    const parent=await tx.get(window.fb.doc(window.db,'patrol_tracks',id));
+    const live=await tx.get(window.fb.doc(window.db,'live_staff',staffId));
+    if(!parent.exists() || !live.exists())return false;
+    const p=parent.data(),l=live.data();
+    return p.cleanName===staffId && p.sessionId===id && p.status==='ENDED' && p.dutyActive===false &&
+      Number.isSafeInteger(p.endedAt) && p.endedAt>0 &&
+      (!l.cleanName || l.cleanName===staffId) && l.status==='ENDED' && l.dutyActive===false &&
+      !l.sessionId && l.lastEndedSessionId===id;
+  })),20000,'Cannot confirm the previous End Duty. Check connectivity and retry End Duty.');
+  if(!ended)throw Error('Previous End Duty is not confirmed. Retry End Duty for the existing session first.');
+  rememberEndedDuty(staffId,id);removeConfirmedDutyMarker(staffId,id);finalizeEndedDutyUi(staffId,id);
+  const stopped=await dutyMeasure('end.androidStop',()=>notifyAndroidDuty(false,id,true));
+  if(!stopped && window.Android)throw Error('Duty ended; exact Android GPS stop remains unconfirmed. Retry End Duty.');
+  delete window.endDutyClosureRequests?.[staffId];localStorage.removeItem('endDutyClosureRequest:'+staffId);
+  if(window.endDutyAndroidStopPending===id)delete window.endDutyAndroidStopPending;
+  void dutyProcessReport(id);
+}
+
 // Start requests own their UI locks. A waiting transaction is never cancelled by a UI timer.
 let dutyStartRequest = null;
 function startDutyDeadline(promise, ms, message) {
@@ -133185,10 +133283,8 @@ function startDutyDeadline(promise, ms, message) {
   })]).finally(()=>clearTimeout(timer));
 }
 async function queryActiveDutyParents(staff) {
-  const snapshots=await Promise.all(['dutyActive','status'].map(field=>
-    window.fb.getDocsFromServer(window.fb.query(window.fb.collection(window.db,'patrol_tracks'),
-      window.fb.where('cleanName','==',staff),
-      window.fb.where(field,'==',field==='dutyActive'?true:'ACTIVE')))));
+  if(typeof window.queryDutyActiveParents!=='function')throw Error('Firestore lifecycle reader is not ready');
+  const snapshots=[await window.queryDutyActiveParents(staff)];
   const refs=new Map();
   for(const snapshot of snapshots) snapshot.forEach(parent=>{
     const data=parent.data();
@@ -133306,7 +133402,7 @@ try {
             "📍 Requesting Android Location Permission..."
         );
 
-        await startDutyDeadline(waitForAndroidLocationPermission(),30000,'Location permission response timed out');
+        await startDutyDeadline(dutyMeasure('start.permission',()=>waitForAndroidLocationPermission()),30000,'Location permission response timed out');
 
         console.log(
             "✅ Permission Granted"
@@ -133414,6 +133510,7 @@ await waitForFirebaseReady();
   cleanName(payload.leader);
 if (!cleanLeader || cleanLeader!==String(profile.cleanName || '').trim()) throw Error('Staff identity mismatch; refresh the authenticated profile');
 
+await reconcilePendingDutyEnd(cleanLeader);
 await checkUnresolvedDutyStart(cleanLeader);
 
 const now =
@@ -133460,7 +133557,7 @@ const sessionId =
 // =====================================================
 
 const dutyGps =
-    await getDutyStartGps();
+    await dutyMeasure('start.firstGps',()=>getDutyStartGps());
 
 if(
     !dutyGps ||
@@ -133782,7 +133879,7 @@ updatedAt: Date.now(),
 
   };
 ownedRequest.phase='query';
-const activeParentRefs=await startDutyDeadline(queryActiveDutyParents(cleanLeader),20000,
+const activeParentRefs=await startDutyDeadline(dutyMeasure('start.activeQuery',()=>queryActiveDutyParents(cleanLeader)),20000,
   'Cannot verify ACTIVE duties from the Firestore server. Check connectivity and retry. No Start Duty transaction was attempted.');
 ownedRequest.phase='transaction';
 ownedRequest.pendingKey='pendingDutyStart:'+cleanLeader;
@@ -133793,7 +133890,7 @@ ownedRequest.timer=setTimeout(()=>{
   startBtn.innerHTML='Awaiting server confirmation — do not retry';
   startBtn.title='Outcome not yet known. Session: '+sessionId;
 },20000);
-await window.fb.runTransaction(window.db,async transaction=>{
+await dutyMeasure('start.transaction',()=>window.fb.runTransaction(window.db,async transaction=>{
   const live=await transaction.get(liveRef), parent=await transaction.get(trackRef);
   if (parent.exists()) throw Error('Session ID collision; retry Start Duty');
   for (const ref of activeParentRefs) {
@@ -133809,7 +133906,7 @@ await window.fb.runTransaction(window.db,async transaction=>{
   }
   transaction.set(liveRef,liveData,{merge:true});
   transaction.set(trackRef,trackData);
-});
+}));
 ownedRequest.committed=true;
 ownedRequest.phase='committed';
 clearTimeout(ownedRequest.timer);
@@ -133940,20 +134037,11 @@ window.confirmedDutyStartFix = {
     accuracy: startAccuracy, time: Number(dutyGps.timestamp),
     timestamp: Number(dutyGps.timestamp)
 };
-try {
-    const visible = window.visibleStaffCache?.[cleanLeader];
-    if (visible?.dutyActive === true &&
-        String(visible.sessionId || '').trim() === sessionId &&
-        typeof window.ensureLiveStaffMarker === 'function') {
-        const point = window.getLatestPatrolPointForSession?.(sessionId) ||
-            window.confirmedDutyStartFix;
-        window.ensureLiveStaffMarker(visible, point, sessionId,
-            Number(point.lat), Number(point.lon));
-    }
-} catch (markerError) {
-    console.warn('Initial duty marker will resume through the staff listener', markerError);
-}
 if(typeof closeDutyForm === "function") closeDutyForm();
+try {
+    void dutyMeasure('start.marker',()=>showConfirmedDutyStart(liveData,window.confirmedDutyStartFix))
+      .catch(error=>console.warn('Initial marker will resume through the staff listener',error));
+} catch(markerError){console.warn('Initial marker deferred',markerError);}
 // Yield so modal closure can paint and Android handoff can begin.
 setTimeout(() => alert("✅ Duty Started Successfully"), 0);
 
@@ -133979,10 +134067,8 @@ try {
             }
         );
 
-        await notifyAndroidDuty(
-            true,
-            sessionId
-        );
+        void dutyMeasure('start.androidHandoff',()=>notifyAndroidDuty(true,sessionId))
+          .catch(error=>console.error('Android start handoff failed; Firestore duty remains ACTIVE',error));
 
         console.log(
             "✅ ANDROID GPS START REQUEST SENT",

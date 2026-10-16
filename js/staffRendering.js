@@ -140,6 +140,7 @@
     }
     function owner(id) {
         const s = w.patrolSessionStaff?.[id];
+        if(s && w.confirmedEndedDutySessions?.get(String(key(s)).trim().toUpperCase())?.has(id))return null;
         const current = s && w.visibleStaffCache?.[key(s)];
         return current?.dutyActive === true && String(current.sessionId || '').trim() === id ? current : null;
     }
@@ -366,7 +367,8 @@
             hideRestrictedMarker(name);
             return {marker: null, icon: null, popup: ''};
         }
-        if (!authorized || authorized.dutyActive !== true || String(authorized.sessionId || '').trim() !== id || !valid(p, id))
+        if (w.confirmedEndedDutySessions?.get(String(name).trim().toUpperCase())?.has(id) ||
+            !authorized || authorized.dutyActive !== true || String(authorized.sessionId || '').trim() !== id || !valid(p, id))
             return {marker: null, icon: null, popup: ''};
         let marker = w.staffMarkers[name];
         if (!marker) {
