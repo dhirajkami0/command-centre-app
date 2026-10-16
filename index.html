@@ -133176,7 +133176,60 @@ window.onAndroidLocationPermissionDenied = function () {
           /* 🔥 FIXED START DUTY: CAPTURES DATA, SUBMITS, AND UPDATES BUTTON */
  let startDutySubmitting = false;
 
+// Start requests own their UI locks. A waiting transaction is never cancelled by a UI timer.
+let dutyStartRequest = null;
+function startDutyDeadline(promise, ms, message) {
+  let timer;
+  return Promise.race([promise, new Promise((_, reject) => {
+    timer=setTimeout(()=>reject(Object.assign(Error(message),{code:'start/query-timeout'})),ms);
+  })]).finally(()=>clearTimeout(timer));
+}
+async function queryActiveDutyParents(staff) {
+  const snapshots=await Promise.all(['dutyActive','status'].map(field=>
+    window.fb.getDocsFromServer(window.fb.query(window.fb.collection(window.db,'patrol_tracks'),
+      window.fb.where('cleanName','==',staff),
+      window.fb.where(field,'==',field==='dutyActive'?true:'ACTIVE')))));
+  const refs=new Map();
+  for(const snapshot of snapshots) snapshot.forEach(parent=>{
+    const data=parent.data();
+    if(data.cleanName!==staff) throw Error('Unexpected patrol ownership; no session was changed');
+    if(data.dutyActive===true || data.status==='ACTIVE')
+      refs.set(parent.id,window.fb.doc(window.db,'patrol_tracks',parent.id));
+  });
+  return [...refs.values()];
+}
+function cleanStartDutyUi(request) {
+  if(!request || dutyStartRequest!==request)return;
+  clearTimeout(request.timer);
+  request.button.innerHTML=request.originalText;
+  request.button.disabled=false;
+  window.__dutyUpdating=false;
+  startDutySubmitting=false;
+  window.startDutyInProgress=false;
+  dutyStartRequest=null;
+  updateDutyButton();
+}
+async function checkUnresolvedDutyStart(staff) {
+  const saved=localStorage.getItem('pendingDutyStart:'+staff);
+  if(!saved)return;
+  const pending=JSON.parse(saved);
+  if(pending.staff!==staff || typeof pending.sessionId!=='string' || !pending.sessionId.startsWith(staff+'_'))
+    throw Error('Invalid pending Start Duty identity; reconcile before retrying');
+  // Read-only transaction is server-authoritative. Absence does not cancel an older request.
+  const state=await startDutyDeadline(window.fb.runTransaction(window.db,async tx=>{
+    const live=await tx.get(window.fb.doc(window.db,'live_staff',staff));
+    const parent=await tx.get(window.fb.doc(window.db,'patrol_tracks',pending.sessionId));
+    return {live:live.exists()?live.data():null,parent:parent.exists()?parent.data():null};
+  }),20000,'Cannot verify the previous Start Duty outcome. Check connectivity; do not start again.');
+  const active=d=>d && (d.dutyActive===true || d.status==='ACTIVE');
+  if(state.live?.sessionId===pending.sessionId && state.parent?.sessionId===pending.sessionId &&
+      state.live.cleanName===staff && state.parent.cleanName===staff && active(state.live) && active(state.parent))
+    throw Error('The previous Start Duty committed ('+pending.sessionId+'). Refresh duty state; do not create another duty.');
+  throw Error('Previous Start Duty outcome requires reconciliation ('+pending.sessionId+'). No new session was created.');
+}
+
 async function startDuty(event) {
+  let ownedRequest=null;
   console.trace("🚨 startDuty CALLED FROM");
   console.group("🚀 startDuty START");
 
@@ -133240,6 +133293,8 @@ async function startDuty(event) {
 // ===========================================================
 
 startDutySubmitting = true;
+ownedRequest={button:startBtn,originalText:startBtn.innerHTML,phase:'permission',committed:false};
+dutyStartRequest=ownedRequest;
 try {
 
     if (
@@ -133251,7 +133306,7 @@ try {
             "📍 Requesting Android Location Permission..."
         );
 
-        await waitForAndroidLocationPermission();
+        await startDutyDeadline(waitForAndroidLocationPermission(),30000,'Location permission response timed out');
 
         console.log(
             "✅ Permission Granted"
@@ -133274,6 +133329,7 @@ try {
 
     startDutySubmitting = false;
 
+    cleanStartDutyUi(ownedRequest);
     alert(
         "Location permission is required to start duty."
     );
@@ -133357,6 +133413,8 @@ await waitForFirebaseReady();
       const cleanLeader =
   cleanName(payload.leader);
 if (!cleanLeader || cleanLeader!==String(profile.cleanName || '').trim()) throw Error('Staff identity mismatch; refresh the authenticated profile');
+
+await checkUnresolvedDutyStart(cleanLeader);
 
 const now =
   new Date();
@@ -133723,11 +133781,18 @@ updatedAt: Date.now(),
       serverTimestamp()
 
   };
-const previousParents=await window.fb.getDocsFromServer(window.fb.query(
-  window.fb.collection(window.db,'patrol_tracks'),window.fb.where('cleanName','==',cleanLeader)));
-const activeParentRefs=[];
-previousParents.forEach(parent=>{const data=parent.data();if(data.dutyActive===true || data.status==='ACTIVE')
-  activeParentRefs.push(window.fb.doc(window.db,'patrol_tracks',parent.id));});
+ownedRequest.phase='query';
+const activeParentRefs=await startDutyDeadline(queryActiveDutyParents(cleanLeader),20000,
+  'Cannot verify ACTIVE duties from the Firestore server. Check connectivity and retry. No Start Duty transaction was attempted.');
+ownedRequest.phase='transaction';
+ownedRequest.pendingKey='pendingDutyStart:'+cleanLeader;
+ownedRequest.sessionId=sessionId;
+localStorage.setItem(ownedRequest.pendingKey,JSON.stringify({staff:cleanLeader,sessionId,startMs}));
+ownedRequest.timer=setTimeout(()=>{
+  if(dutyStartRequest!==ownedRequest || ownedRequest.committed)return;
+  startBtn.innerHTML='Awaiting server confirmation — do not retry';
+  startBtn.title='Outcome not yet known. Session: '+sessionId;
+},20000);
 await window.fb.runTransaction(window.db,async transaction=>{
   const live=await transaction.get(liveRef), parent=await transaction.get(trackRef);
   if (parent.exists()) throw Error('Session ID collision; retry Start Duty');
@@ -133745,6 +133810,10 @@ await window.fb.runTransaction(window.db,async transaction=>{
   transaction.set(liveRef,liveData,{merge:true});
   transaction.set(trackRef,trackData);
 });
+ownedRequest.committed=true;
+ownedRequest.phase='committed';
+clearTimeout(ownedRequest.timer);
+localStorage.removeItem(ownedRequest.pendingKey);
 if (!canRestoreDutyState(cleanLeader, sessionId)) {
   finalizeEndedDutyUi(cleanLeader, sessionId);
   return;
@@ -133956,34 +134025,35 @@ try {
     // =====================================================
     
   } catch(err){
-  window.startDutyInProgress = false;
+    // Keep the attempted ID on ambiguous transaction failures for authoritative reconciliation.
+    if(ownedRequest?.phase==='transaction' && (
+        ['permission-denied','unauthenticated','failed-precondition','aborted','invalid-argument'].includes(String(err.code||'').replace('firestore/','')) ||
+        /^(Session ID collision;|Existing ACTIVE patrol session requires reconciliation;|Existing active or inconsistent duty requires reconciliation)/.test(String(err.message||''))))
+      localStorage.removeItem(ownedRequest.pendingKey);
+    cleanStartDutyUi(ownedRequest);
     console.error(
       "❌ Firestore start duty failed:",
       err
     );
 
     alert(
-      "❌ " + err.message
+      "❌ " + (ownedRequest?.committed
+        ? 'Duty committed, but local confirmation failed. Refresh duty state; do not start again. '
+        : ['unavailable','deadline-exceeded'].includes(String(err.code||'').replace('firestore/',''))
+          ? 'Firestore server is unavailable. Check connectivity. '
+          : '') + err.message
     );
 
-    window.__dutyUpdating = false;
-
-    window.isDutyActive = false;
-
-    updateDutyButton();
-
-    startBtn.innerHTML = originalText;
-
-    startBtn.disabled = false;
-    startDutySubmitting = false;
   }
 
 })();
     
   } catch (err) {
+    cleanStartDutyUi(ownedRequest);
     console.error("💥 CRASH:", err);
+    if(ownedRequest) alert('Start Duty could not finish locally. Check duty state before retrying. '+err.message);
     console.groupEnd();
-  } finally {startDutySubmitting=false;window.startDutyInProgress=false;}
+  } finally {cleanStartDutyUi(ownedRequest);}
 }// ✅ FIX: properly closed startDuty
 
     // =====================================================

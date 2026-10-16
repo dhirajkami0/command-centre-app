@@ -102,6 +102,16 @@
         }
         return Number.isFinite(Number(raw)) && Number(raw) > 0 ? Number(raw) : 0;
     }
+    const startSeedCopies=new WeakSet();
+    function isStartSeed(p, id) {
+        const seed=w.confirmedDutyStartFix, s=owner(id);
+        const start=Number(id.match(/_(\d{13})$/)?.[1] || 0);
+        return !!p && !!seed && (p===seed || startSeedCopies.has(p)) &&
+            time(p)===time(seed) && Number(p.lat)===Number(seed.lat) && Number(p.lon)===Number(seed.lon) &&
+            !!s && seed.cleanName===key(s) && seed.sessionId===id &&
+            Number(seed.accuracy)>0 && Number(seed.accuracy)<=20 && start>0 &&
+            time(seed)<=start && start-time(seed)<=30000;
+    }
     function valid(p, id) {
         const lat = Number(p?.lat), lon = Number(p?.lon);
         const fixTime = time(p), sessionStart = Number(id.match(/_(\d{13})$/)?.[1] || 0);
@@ -109,7 +119,7 @@
             Number.isFinite(lat) && Number.isFinite(lon) && lat !== 0 && lon !== 0 &&
             Math.abs(lat) <= 90 && Math.abs(lon) <= 180 &&
             fixTime > 0 && fixTime <= Date.now() + maxClockSkewMs &&
-            (!sessionStart || fixTime >= sessionStart);
+            (!sessionStart || fixTime >= sessionStart || isStartSeed(p, id));
     }
     function newer(p, pid, entry) {
         return !entry.point || time(p) > time(entry.point) ||
@@ -156,6 +166,8 @@
         const entry = index(id), patrol = entry?.point;
         const live = w.getLiveStaffPointForSession?.(id);
         let p = valid(live, id) ? live : null;
+        const seed=w.confirmedDutyStartFix;
+        if(!p && isStartSeed(seed,id) && valid(seed,id))p=seed;
         if (valid(patrol, id) && (!p || time(patrol) > time(p)))
             p = {...patrol, id: String(patrol.id || entry.pointId)};
         const accepted = acceptedPositions.get(id);
@@ -165,7 +177,10 @@
              (Number(p.lat) !== Number(accepted.lat) || Number(p.lon) !== Number(accepted.lon))))) p = accepted;
         if (p) acceptedPositions.set(id, {...p, sessionId: id});
         group(id, p);
-        return p ? {...p, id: String(p.id || entry?.pointId || ''), sessionId: id} : null;
+        if(!p)return null;
+        const result={...p,id:String(p.id || entry?.pointId || ''),sessionId:id};
+        if(isStartSeed(p,id))startSeedCopies.add(result);
+        return result;
     }
     function changed(id, pid, p, existed, removed) {
         const cache = w.sessionPointCache?.[id];
