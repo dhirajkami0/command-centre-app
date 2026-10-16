@@ -86872,13 +86872,19 @@ staff.forEach(s => {
         return;
     }
 
-    const latestRenderPoint =
+    const patrolRenderPoint =
         typeof window.getLatestPatrolPointForSession ===
         "function"
             ? window.getLatestPatrolPointForSession(
                 renderSessionId
               )
             : null;
+    // Presentation-only seed: never put the start fix in patrol history.
+    const startFix = window.confirmedDutyStartFix;
+    const latestRenderPoint = patrolRenderPoint || (
+        startFix?.cleanName === staffName &&
+        startFix.sessionId === renderSessionId ? startFix : null
+    );
 
     if(!latestRenderPoint){
         return;
@@ -87220,17 +87226,7 @@ staff.forEach(s => {
                 updateDutyButton();
               }
 
-              if(startDutySubmitting){
-                startDutySubmitting = false;
-                setTimeout(()=>{
-                  const startBtn = document.getElementById("startDutyBtn");
-                  if(startBtn){
-                    startBtn.innerHTML = "✅ Duty Started";
-                    startBtn.disabled = false;
-                  }
-                  alert("✅ Duty Started Successfully");
-                }, 500);
-              }
+
             }
           });
         });
@@ -133868,6 +133864,30 @@ console.log(
   sessionId
 );
 
+// Firestore has committed both documents. UI confirmation must not wait
+// for patrol history, marker callbacks or Android bridge availability.
+window.confirmedDutyStartFix = {
+    cleanName: cleanLeader, sessionId, lat: startLat, lon: startLon,
+    accuracy: startAccuracy, time: Number(dutyGps.timestamp),
+    timestamp: Number(dutyGps.timestamp)
+};
+try {
+    const visible = window.visibleStaffCache?.[cleanLeader];
+    if (visible?.dutyActive === true &&
+        String(visible.sessionId || '').trim() === sessionId &&
+        typeof window.ensureLiveStaffMarker === 'function') {
+        const point = window.getLatestPatrolPointForSession?.(sessionId) ||
+            window.confirmedDutyStartFix;
+        window.ensureLiveStaffMarker(visible, point, sessionId,
+            Number(point.lat), Number(point.lon));
+    }
+} catch (markerError) {
+    console.warn('Initial duty marker will resume through the staff listener', markerError);
+}
+if(typeof closeDutyForm === "function") closeDutyForm();
+// Yield so modal closure can paint and Android handoff can begin.
+setTimeout(() => alert("✅ Duty Started Successfully"), 0);
+
 // =====================================================
 // 📱 START ANDROID GPS — SAME SESSION
 // -----------------------------------------------------
@@ -133926,10 +133946,7 @@ try {
 // =====================================================
 // 🔥 CLOSE FORM NOW
 // =====================================================
-if(typeof closeDutyForm === "function"){
-
-  closeDutyForm();
-}
+// The form was already closed after the successful Firestore commit.
 
 // =====================================================
 // 🔥 FINAL UI STATE
