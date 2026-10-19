@@ -133324,6 +133324,34 @@ async function checkUnresolvedDutyStart(staff) {
   throw Error('Previous Start Duty outcome requires reconciliation ('+pending.sessionId+'). No new session was created.');
 }
 
+// Returns only a uniquely matching authoritative ACTIVE session; never repairs history.
+function resolveExistingDutySession(staff,live,parents) {
+  const active=parents.filter(p=>p.data.dutyActive===true || p.data.status==='ACTIVE');
+  if(!active.length)return null;
+  const p=active[0],d=p.data;
+  if(active.length!==1 || d.cleanName!==staff || d.sessionId!==p.id ||
+      d.status!=='ACTIVE' || d.dutyActive!==true || d.endedAt!=null ||
+      !Number.isSafeInteger(d.startedAt) || d.startedAt<=0 ||
+      !live || live.cleanName!==staff || live.sessionId!==p.id ||
+      live.status!=='ACTIVE' || live.dutyActive!==true || live.endedAt!=null ||
+      (live.startedAt!=null && live.startedAt!==d.startedAt))
+    throw Error('Existing ACTIVE patrol session requires reconciliation; no history was changed. Sessions: '+active.map(p=>p.id).join(', '));
+  return {sessionId:p.id,startedAt:d.startedAt,live};
+}
+function restoreConfirmedDutySession(staff,state) {
+  const id=state.sessionId;
+  if(!canRestoreDutyState(staff,id))throw Error('Confirmed ACTIVE session conflicts with local closure state: '+id+'. Refresh duty status; no session was changed.');
+  // Do not run fresh-duty analytics/counter/cache initialization for an existing session.
+  window.currentSessionId=id;window.dutyStartedAt=state.startedAt;window.isDutyActive=true;
+  localStorage.setItem('sessionId',id);localStorage.setItem('dutyStartedAt',String(state.startedAt));
+  localStorage.setItem('dutyActive','true');updateDutyButton();
+  if(typeof closeDutyForm==='function')closeDutyForm();
+  // Existing Firestore listeners remain responsible for marker position and freshness.
+  void dutyMeasure('start.restoreAndroid',()=>notifyAndroidDuty(true,id))
+    .catch(error=>console.error('Active session restored; Android handoff requires retry',error));
+  setTimeout(()=>alert('Existing active duty restored: '+id),0);
+}
+
 async function startDuty(event) {
   let ownedRequest=null;
   console.trace("🚨 startDuty CALLED FROM");
@@ -133890,14 +133918,16 @@ ownedRequest.timer=setTimeout(()=>{
   startBtn.innerHTML='Awaiting server confirmation — do not retry';
   startBtn.title='Outcome not yet known. Session: '+sessionId;
 },20000);
-await dutyMeasure('start.transaction',()=>window.fb.runTransaction(window.db,async transaction=>{
+const existingDuty=await dutyMeasure('start.transaction',()=>window.fb.runTransaction(window.db,async transaction=>{
   const live=await transaction.get(liveRef), parent=await transaction.get(trackRef);
   if (parent.exists()) throw Error('Session ID collision; retry Start Duty');
+  const oldParents=[];
   for (const ref of activeParentRefs) {
     const old=await transaction.get(ref);
-    if (old.exists() && (old.data().dutyActive===true || old.data().status==='ACTIVE'))
-      throw Error('Existing ACTIVE patrol session requires reconciliation; no history was changed');
+    if(old.exists())oldParents.push({id:ref.id || String(ref.path).split('/').pop(),data:old.data()});
   }
+  const existing=resolveExistingDutySession(cleanLeader,live.exists()?live.data():null,oldParents);
+  if(existing)return existing; // Read-only restoration: no new session or lifecycle writes.
   if (live.exists()) {
     const data=live.data();
     if ((data.cleanName && data.cleanName!==cleanLeader) || data.dutyActive===true ||
@@ -133907,6 +133937,13 @@ await dutyMeasure('start.transaction',()=>window.fb.runTransaction(window.db,asy
   transaction.set(liveRef,liveData,{merge:true});
   transaction.set(trackRef,trackData);
 }));
+if(existingDuty){
+  clearTimeout(ownedRequest.timer);
+  localStorage.removeItem(ownedRequest.pendingKey);
+  ownedRequest.phase='restored';
+  restoreConfirmedDutySession(cleanLeader,existingDuty);
+  return;
+}
 ownedRequest.committed=true;
 ownedRequest.phase='committed';
 clearTimeout(ownedRequest.timer);
