@@ -3528,8 +3528,9 @@ background: rgba(15, 20, 15, 0.92);z-index: 4000;
 ============================================================ */
     #panelToggle {
       position: absolute;
-      top: calc(15px + var(--sat));
-      left: 15px;
+      top: calc(var(--menu-map-y, 0px) + 12px + var(--sat));
+      left: var(--menu-map-x, 50%);
+      transform: translateX(-50%);
       width: 50px;
       height: 50px;
       z-index: 4005;
@@ -3553,18 +3554,22 @@ background: rgba(20, 30, 20, 0.95);
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     }
 
-    .toggle-active {
-      left: 220px !important;
+    #panelToggle.toggle-active {
+      left: var(--menu-map-x, 50%);
     }
 
     #panelToggle:active {
-      transform: scale(0.9);
+      transform: translateX(-50%) scale(0.9);
     }
 
     #panelToggle {
-      transition: left 0.35s ease, transform 0.2s ease;
+      transition: transform 0.2s ease;
     }
 
+    /* Reserve the centered menu slot without moving top-left GIS controls. */
+    #map .leaflet-top.leaflet-left { width: calc(50% - 30px); }
+    #map .btr-measurement-toolbar { box-sizing: border-box; max-width: calc(100% - 10px); }
+    #map .btr-geometry-results { box-sizing: border-box; max-width: min(320px, calc(100% - 10px)); }
     /* ============================================================
    🔘 BUTTONS (FULL GLASS STYLE)
 ============================================================ */
@@ -4100,8 +4105,8 @@ canvas.leaflet-zoom-animated {
         width: 230px;
       }
 
-      .toggle-active {
-        left: 190px !important;
+      #panelToggle.toggle-active {
+        left: var(--menu-map-x, 50%);
       }
 
       .legend {
@@ -15975,6 +15980,21 @@ var map = L.map('map', {
 // 🌍 DEFAULT BASE LAYER = ESRI
 // ======================================
 
+// Align the existing root-level menu to the map without entering its stacking context.
+(function () {
+  const button = document.getElementById('panelToggle');
+  const container = map.getContainer();
+  function alignMenu() {
+    const bounds = container.getBoundingClientRect();
+    const origin = button.offsetParent?.getBoundingClientRect() || { left: 0, top: 0 };
+    button.style.setProperty('--menu-map-x', (bounds.left - origin.left + bounds.width / 2) + 'px');
+    button.style.setProperty('--menu-map-y', (bounds.top - origin.top) + 'px');
+  }
+  alignMenu();
+  if (window.ResizeObserver) new ResizeObserver(alignMenu).observe(container);
+  window.addEventListener('resize', alignMenu, { passive: true });
+  map.on('resize', alignMenu);
+})();
 window.StaffStartupDiagnostics?.mark('T1');
 window.StartupCoordinator?.bindMap(map, esriSat);
 esriSat.addTo(map);
