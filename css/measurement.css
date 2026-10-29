@@ -1,0 +1,16 @@
+/* Scoped measurement-only styles. Baseline Leaflet rules remain unchanged. */
+.btr-measurement-visuals { z-index:560; pointer-events:none !important; }
+.btr-measurement-visuals svg,.btr-measurement-visuals path,.btr-measurement-visuals .leaflet-interactive {pointer-events:none !important;}
+.btr-measurement-toolbar {background:#142b3a;color:#fff;padding:8px;border:1px solid #57748a;border-radius:6px;max-width:calc(100vw - 90px);font:13px system-ui;}
+.btr-measurement-toolbar button {font:inherit;min-width:44px;min-height:44px;margin:2px;cursor:pointer;}
+.btr-measurement-toolbar output {display:block;padding:4px;}
+@media(max-width:480px){.btr-measurement-toolbar{max-width:285px;padding:4px;}.btr-measurement-toolbar button{padding:2px 6px;}}
+
+.btr-measurement-edit-handles{z-index:610;pointer-events:none!important}.btr-measurement-handle{pointer-events:auto!important;background:#fff;border:2px solid #0284c7;border-radius:50%;display:grid;place-items:center;color:#092b40;font:bold 12px system-ui;box-sizing:border-box}
+.btr-geometry-results{background:#142b3a;color:#fff;border:1px solid #57748a;border-radius:6px;padding:7px;font:12px system-ui;max-width:min(320px,calc(100vw - 30px));max-height:65vh;overflow:auto}.btr-geometry-results pre{white-space:pre-wrap;overflow-wrap:anywhere}.btr-geometry-results textarea{width:100%;box-sizing:border-box;background:#fff;color:#111}.btr-geometry-results button,.btr-geometry-results select,.geometry-tools select{min-height:44px}.geometry-tools label{display:block}.gis-disclaimer{color:#fde68a}.btr-geometry-results fieldset{margin:10px 0 0;min-width:0}
+
+.btr-export-tools{min-width:0;margin-top:12px}.btr-export-tools label{display:block;margin:5px 0}.btr-export-tools input,.btr-export-tools textarea,.btr-export-tools select{width:100%;box-sizing:border-box}.btr-export-tools input,.btr-export-tools button{min-height:44px}.btr-export-tools output{display:block;white-space:normal;overflow-wrap:anywhere}.btr-export-tools [role="dialog"]{border:1px solid #9fb9cd;padding:8px;margin-top:8px}.btr-export-tools [hidden]{display:none!important}
+
+/* Keep measurement-owned controls usable beside the production rail in landscape. */
+.btr-measurement-toolbar{max-height:40vh;overflow:auto}
+@media(max-height:480px){.btr-measurement-toolbar,.btr-geometry-results{max-height:33vh;box-sizing:border-box}}

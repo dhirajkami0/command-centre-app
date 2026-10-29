@@ -1,0 +1,14 @@
+/* Browser-only download lifecycle. No native bridge, external URLs or filesystem paths. */
+(function(root,factory){if(typeof module==='object'&&module.exports)module.exports=factory(require('./export.js'));else root.BTRBrowserExport=factory(root.BTRGeometryExport);})(typeof globalThis!=='undefined'?globalThis:this,function(E){'use strict';
+ function create(w,options={}){const releaseMs=options.releaseMs??30000,maxBytes=options.maxBytes??5*1024*1024,maxActive=options.maxActive??8;let pending=null,disposed=false,issued=0,cancelled=0;const active=new Map();
+  function supported(){return !disposed&&!w.Android&&!/\bwv\b/.test(w.navigator?.userAgent||'')&&/^https?:$/.test(w.location?.protocol||'')&&typeof w.Blob==='function'&&typeof w.URL?.createObjectURL==='function'&&'download'in w.document.createElement('a');}
+  function release(url){const entry=active.get(url);if(!entry)return false;if(entry.timer!=null)w.clearTimeout(entry.timer);w.URL.revokeObjectURL(url);active.delete(url);if(pending?.url===url)pending=null;return true;}
+  function cancel(){if(!pending)return false;const url=pending.url;cancelled++;return release(url);}
+  function prepare(content,format,name){cancel();if(!supported())throw Error('File saving is not available in this WebView; no native saving contract is installed');if(typeof content!=='string'||!content.trim())throw Error('Empty download payload');const filename=E.filename(name,format),mime=E.MIME[format],blob=new w.Blob([content],{type:mime});if(blob.size>maxBytes)throw Error('Export exceeds the 5 MiB prototype limit');cancel();if(active.size>=maxActive)throw Error('Wait for earlier browser downloads to release their URLs');const url=w.URL.createObjectURL(blob);active.set(url,{timer:null});pending={url,filename,mime,bytes:blob.size,format};return{filename,mime,bytes:blob.size};}
+  function save(){if(!pending)throw Error('No prepared export');if(!supported()){cancel();throw Error('Browser saving is unavailable');}const item=pending,a=w.document.createElement('a');a.href=item.url;a.download=item.filename;a.style.display='none';w.document.body.appendChild(a);try{a.click();pending=null;issued++;active.get(item.url).timer=w.setTimeout(()=>release(item.url),releaseMs);return{filename:item.filename,mime:item.mime,bytes:item.bytes,status:'DOWNLOAD_REQUESTED'};}catch(e){release(item.url);throw e;}finally{a.remove();}}
+  function stats(){return{supported:supported(),activeURLs:active.size,pending:pending?{filename:pending.filename,mime:pending.mime,bytes:pending.bytes}:null,issued,cancelled};}
+  function dispose(){cancel();for(const url of [...active.keys()])release(url);disposed=true;w.removeEventListener('pagehide',dispose);}
+  w.addEventListener('pagehide',dispose);return{prepare,save,cancel,stats,dispose};
+ }
+ return Object.freeze({create});
+});

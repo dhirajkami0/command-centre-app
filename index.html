@@ -28427,6 +28427,8 @@ function showPlanetThumb(scene){
         ) {
 
             try {
+// Measurement owns only deliberate geometry input; operational behavior is otherwise unchanged.
+if (window.BTRGISMeasurement?.ownsInput(e)) return;
 
               // =====================================================
 // 🐘 HELP LOCATION MODE
@@ -49292,6 +49294,8 @@ function bindUniversalTooltip(
         try {
 
           if(e.originalEvent){
+// Measurement owns only deliberate geometry input; operational behavior is otherwise unchanged.
+if (window.BTRGISMeasurement?.ownsInput(e)) return;
 
             e.originalEvent.preventDefault();
 
@@ -49576,6 +49580,8 @@ function (
 
     try {
 
+// Measurement owns only deliberate geometry input; operational behavior is otherwise unchanged.
+if (enabled) window.BTRGISMeasurement?.cancel();
         const offenceMode =
 
             enabled === true;
@@ -50505,6 +50511,8 @@ function(e){
 
 try{
 
+// Measurement owns only deliberate geometry input; operational behavior is otherwise unchanged.
+if (window.BTRGISMeasurement?.ownsInput(e)) return;
 L.DomEvent.stopPropagation(e);
 
 console.debug(
@@ -50636,6 +50644,8 @@ function(e){
 
 try{
 
+// Measurement owns only deliberate geometry input; operational behavior is otherwise unchanged.
+if (window.BTRGISMeasurement?.ownsInput(e)) return;
 L.DomEvent.stopPropagation(e);
 
 console.debug(
@@ -50772,6 +50782,8 @@ function(e){
 
 try{
 
+// Measurement owns only deliberate geometry input; operational behavior is otherwise unchanged.
+if (window.BTRGISMeasurement?.ownsInput(e)) return;
 L.DomEvent.stopPropagation(e);
 
 console.debug(
@@ -51427,6 +51439,8 @@ layer.on(
 function(e){
 
 try{
+// Measurement owns only deliberate geometry input; operational behavior is otherwise unchanged.
+if (window.BTRGISMeasurement?.ownsInput(e)) return;
 
 // ==========================================
 // STOP CLICK FROM REACHING BACKGROUND MAP
@@ -106539,6 +106553,8 @@ function createOperationalAssetPoint(feature, latlng) {
 function bindOperationalAssetFeature(feature, layer) {
     layer.on('click', e => {
         if (!operationalAssetsCanInteract() || !canViewOperationalAsset(feature, window.userProfile) || !operationalAssetMatchesGIS(feature)) return;
+// Measurement owns only deliberate geometry input; operational behavior is otherwise unchanged.
+if (window.BTRGISMeasurement?.ownsInput(e)) return;
         const popup = L.popup({ maxWidth: 340 }).setLatLng(e.latlng || layer.getLatLng())
             .setContent(buildOperationalAssetPopup(feature)).openOn(window.map || map);
         window.operationalAssetPopup = popup;
@@ -108768,6 +108784,8 @@ function useCurrentHelpLocation(){
 function startHelpMapSelection(){
 
     closeEnterpriseTooltipFully?.();
+// Measurement owns only deliberate geometry input; operational behavior is otherwise unchanged.
+window.BTRGISMeasurement?.cancel();
 
     // ============================================
     // ENTER MAP SELECTION MODE
@@ -135654,5 +135672,14 @@ Logout
 <script src="js/operationalAssets/conditions.js"></script>
 <link rel="stylesheet" href="css/mapControlRail.css">
 <script src="js/mapControlRail.js"></script>
+<link rel="stylesheet" href="css/measurement.css">
+<script src="js/measurement/geometry.js"></script>
+<script src="js/measurement/document.js"></script>
+<script src="js/measurement/interaction.js"></script>
+<script src="js/measurement/export.js"></script>
+<script src="js/measurement/download.js"></script>
+<script src="js/measurement/export-ui.js"></script>
+<script src="js/measurement/geometry-ui.js"></script>
+<script src="js/measurement/integration.js"></script>
 </body>
 </html>
