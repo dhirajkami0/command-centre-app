@@ -100,6 +100,7 @@
    listen(container,'click',click,{capture:true});listen(container,'dblclick',doubleClick,{capture:true});listen(container,'contextmenu',contextMenu,{capture:true});
    listen(w,'blur',interruption,passiveCapture);listen(w,'resize',interruption,passiveCapture);listen(w.document,'visibilitychange',visibility,passiveCapture);
   }
+  function setKind(kind){if(disposed||state!=='DRAWING')return false;const changed=model.setKind(kind);if(changed){lastEditError=null;sequence=null;refreshDocument(false);}return changed;}
   function start(kind='distance'){if(disposed||active()||blocked())return false;clearEditHandles();clearGeometry();model.reset(kind);syncPoints();preview=null;lastEditError=null;state='DRAWING';sequence=null;attachInput();notify();return true;}
   function finish(){if(state!=='DRAWING'||!points.length)return false;const result=model.measure();if(!result.valid||(model.get().kind==='area'&&!result.complete)){lastEditError=result.error||'Area needs three distinct vertices';notify();return false;}state='FINISHED';detach();preview=null;draw();notify();return true;}
   function undo(){abortEditMove();const ok=model.undo();lastEditError=null;refreshDocument();return ok;}
@@ -107,7 +108,7 @@
   function cancel(){abortEditMove();state='OFF';detach();clearEditHandles();model.reset();syncPoints();preview=null;lastEditError=null;clearGeometry();notify();}
   function clear(){if(state==='EDITING')return false;model.clear();syncPoints();clearGeometry();sequence=null;preview=null;lastEditError=null;if(state==='FINISHED')state='OFF';notify();return true;}
   function ownsOperationalInput(e){return active()&&!excluded(e?.originalEvent?.target||e?.target);}
-  return {start,finish,undo,redo,cancel,clear,edit,saveEdit,cancelEdit,addMidpoint,removeVertex,measurement,setPrecision(n){coordinatePrecision=w.BTRGeometry.precision(n);notify();},setTemporary(kind,coords){cancel();model.reset(kind,coords);syncPoints();state='FINISHED';draw();notify();},inspect,ownsOperationalInput,active,geometry:()=>points.map(p=>p.slice()),
+  return {start,setKind,finish,undo,redo,cancel,clear,edit,saveEdit,cancelEdit,addMidpoint,removeVertex,measurement,setPrecision(n){coordinatePrecision=w.BTRGeometry.precision(n);notify();},setTemporary(kind,coords){cancel();model.reset(kind,coords);syncPoints();state='FINISHED';draw();notify();},inspect,ownsOperationalInput,active,geometry:()=>points.map(p=>p.slice()),
    reconcile(){return conflict();},destroy(){if(disposed)return;disposed=true;cancel();pane.remove();editPane.remove();}};
  }};
 })(window);

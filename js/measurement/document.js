@@ -11,6 +11,7 @@
    get:()=>clone(current()),snapshot,measure:()=>G.analyze(current().kind,current().coordinates),error:()=>error,
    history:()=>({undo:cursor>0,redo:cursor<entries.length-1,entries:entries.length,editing:!!editing}),
    reset(kind='distance',coordinates=[]){if(!['distance','area'].includes(kind))throw Error('Invalid measurement type');entries=[{kind,coordinates:coordinates.map(G.position)}];cursor=0;draft=null;editing=null;error=null;},
+   setKind(kind){if(!['distance','area'].includes(kind))throw Error('Invalid measurement type');if(editing){error='Finish or cancel vertex editing before changing measurement type';return false;}return commit({...current(),kind});},
    add(p){return commit({...current(),coordinates:[...current().coordinates,G.position(p)]});},
    clear(){return commit({...current(),coordinates:[]});},
    undo(){if(cursor===0||(editing&&!validEdit(entries[cursor-1])))return false;cursor--;draft=null;error=null;return true;},
