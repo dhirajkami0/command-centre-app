@@ -120750,6 +120750,26 @@ function dutyRouteDistance(points) {
     km += getDistance([points[i-1].lat,points[i-1].lng],[points[i].lat,points[i].lng]);
   return km;
 }
+// Notification-only state: never authorizes or completes a reporting job.
+function dutyNotifyReport(job, stage, message) {
+  const key='endDutyReportNotice:'+job.sessionId;
+  window.dutyReportNotices ||= {};
+  let notice=window.dutyReportNotices[job.sessionId];
+  if (!notice) {try {notice=JSON.parse(localStorage.getItem(key) || 'null');} catch (_) {}}
+  if (!notice || !Array.isArray(notice.stages)) notice={stages:[],failure:null};
+  const failure=JSON.stringify((job.failures || []).map(error=>String(error?.message || error)));
+  const repeated=stage==='RETRY_REQUIRED' ? notice.failure===failure : notice.stages.includes(stage);
+  if (repeated) return;
+  if (stage==='RETRY_REQUIRED') notice.failure=failure;
+  else notice.stages.push(stage);
+  window.dutyReportNotices[job.sessionId]=notice;
+  try {localStorage.setItem(key,JSON.stringify(notice));} catch (_) { /* Tab-local fallback. */ }
+  showToast(message);
+}
+function dutyReportingOffline() {
+  return typeof navigator!=='undefined' && navigator.onLine===false;
+}
+
 async function dutySaveJob(job, token = null) {
   if (job.state==='COMPLETE' && (job.registerAck?.sessionId!==job.sessionId ||
       job.registerAck?.routeOutcome!==job.routeOutcome || !job.historyDone || !job.analyticsDone || !job.distanceDone))
@@ -120766,13 +120786,13 @@ async function dutySaveJob(job, token = null) {
   });
   const stage=job.state==='RETRY_REQUIRED' ? 'RETRY_REQUIRED' : job.registerAck ? 'SHEET_VERIFIED' :
     (!job.routeOutcome || job.routeOutcome==='ROUTE') && !job.kmlUrl ? 'KML_PENDING' : 'SHEET_PENDING';
-  const previous=window.endDutyReportStates?.[job.sessionId]?.reportStage;
   recordEndDutyReportState({sessionId:job.sessionId,staffId:job.staffId,endAtMs:job.endedAt},job.state,job.failures || [],stage);
-  if (previous!==stage) showToast(({KML_PENDING:'Duty ended. KML generation/upload pending: ',
+  dutyNotifyReport(job,stage,({KML_PENDING:'Duty ended. KML generation/upload pending: ',
     SHEET_PENDING:'Duty ended. Google Sheet registration pending: ',
     SHEET_VERIFIED:'Google Sheet registration verified: ',RETRY_REQUIRED:'Duty ended. Reporting requires retry: '})[stage]+job.sessionId);
 }
 async function dutyClaimJob(sessionId) {
+  if (dutyReportingOffline()) return null;
   const ref = window.fb.doc(window.db,'patrol_tracks',sessionId);
   const token = crypto.randomUUID();
   return window.fb.runTransaction(window.db, async tx => {
@@ -120840,6 +120860,7 @@ async function dutyRegister(job) {
   } finally { clearTimeout(timer); }
 }
 async function dutyProcessReport(sessionId) {
+  if (dutyReportingOffline()) return;
   window.dutyReportFlights ||= new Map();
   if (window.dutyReportFlights.has(sessionId)) return window.dutyReportFlights.get(sessionId);
   const flight = (async () => {
@@ -120957,7 +120978,7 @@ async function dutyProcessReport(sessionId) {
         job.state='RETRY_REQUIRED';job.failures=[String(error.message || error)];job.attempts=(job.attempts || 0)+1;
         job.leaseUntil=0;job.nextAttemptAt=Date.now()+Math.min(300000,5000*2**Math.min(job.attempts,6));
         try {await dutySaveJob(job,job.leaseToken);} catch(saveError) {console.error('Report lease/checkpoint unverified',saveError);}
-        showToast('Duty remains ended. Report pending retry: '+sessionId);
+        dutyNotifyReport(job,'RETRY_REQUIRED','Duty remains ended. Report pending retry: '+sessionId);
       }
     }
   })();
@@ -120965,7 +120986,7 @@ async function dutyProcessReport(sessionId) {
   try {return await flight;} finally {window.dutyReportFlights.delete(sessionId);}
 }
 async function dutyResumeReports() {
-  if (!window.db || !window.fb?.where || !window.userProfile?.cleanName || window.dutyReportDiscovery) return;
+  if (dutyReportingOffline() || !window.db || !window.fb?.where || !window.userProfile?.cleanName || window.dutyReportDiscovery) return;
   window.dutyReportDiscovery=true;
   try {
     const ref=window.fb.collection(window.db,'patrol_tracks');
