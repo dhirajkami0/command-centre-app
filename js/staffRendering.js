@@ -485,7 +485,8 @@
     });
     const resume = () => {
         for (const s of Object.values(w.visibleStaffCache || {}))
-            if (s?.dutyActive === true && s.sessionId) w.ensurePatrolSessionListener?.(String(s.sessionId).trim(), s);
+            if (s?.dutyActive === true && s.sessionId && w.patrolSessionRecovery?.[String(s.sessionId).trim()])
+                w.ensurePatrolSessionListener?.(String(s.sessionId).trim(), s);
     };
     w.addEventListener('online', resume);
     w.document.addEventListener('visibilitychange', () => { if (w.document.visibilityState === 'visible') resume(); });

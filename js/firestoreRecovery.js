@@ -3,11 +3,14 @@
   'use strict';
   const profiles=new Map();
   let staff=null, generation=0, failures=0, nextAttempt=0, blocked=false;
-  let retryTimer=null, listenerRequest=null;
+  let retryTimer=null, listenerRequest=null, serverConfirmed=false;
   const classify=error=>{
     const code=String(error?.code||error?.message||'').replace(/^firestore\//,'');
     return code.includes('resource-exhausted')?'resource-exhausted':
       code.includes('permission-denied')?'permission-denied':
+      code.includes('unauthenticated')?'unauthenticated':
+      code.includes('failed-precondition')?'failed-precondition':
+      code.includes('invalid-argument')?'invalid-argument':
       code.includes('TIMEOUT')?'timeout':code.includes('unavailable')?'unavailable':'unknown';
   };
   const scope=()=>JSON.stringify([w.userProfile?.cleanName||w.userProfile?.name||'',w.userProfile?.role||'',w.userProfile?.division||'',w.userProfile?.range||'']);
@@ -15,27 +18,27 @@
     if(new URLSearchParams(w.location?.search||'').get('firestoreRecovery')==='1')
       w.console.info('Firestore recovery',{state,code:code||null,attempts:failures});};
   function cancelRetry(){if(retryTimer!==null)w.clearTimeout(retryTimer);retryTimer=null;}
-  function detach(){cancelRetry();generation++;try{staff?.unsubscribe?.();}catch(_){/* State cleanup must survive an SDK unsubscribe failure. */}finally{staff=null;w.staffListenerActive=false;w.staffUnsubscribe=null;}}
+  function detach(){cancelRetry();generation++;try{staff?.unsubscribe?.();}catch(_){/* State cleanup must survive an SDK unsubscribe failure. */}finally{staff=null;serverConfirmed=false;w.staffListenerActive=false;w.staffUnsubscribe=null;}}
   function stopStaff(){listenerRequest=null;detach();}
   let currentScope=scope(), currentDB=w.db;
   function allowStaff(){
     const changed=currentScope!==scope()||currentDB!==w.db;
     if(changed){stopStaff();currentScope=scope();currentDB=w.db;failures=0;nextAttempt=0;blocked=false;}
-    return !!w.userProfile && !staff && !blocked && failures<3 && Date.now()>=nextAttempt;
+    return !!w.userProfile && !staff && !blocked && Date.now()>=nextAttempt;
   }
   function failed(error,token){
     if(token!==generation)return;
     const request=listenerRequest;
     const code=classify(error);detach();failures++;
-    blocked=code==='permission-denied';
-    nextAttempt=Date.now()+Math.min(300000,(code==='resource-exhausted'?60000:15000)*2**(failures-1));
-    diagnostic(blocked?'denied':failures>=3?'recovery-paused':'retry-wait',code);
-    if(request && !blocked && failures<3){
+    blocked=['permission-denied','unauthenticated','failed-precondition','invalid-argument'].includes(code);
+    nextAttempt=Date.now()+Math.min(300000,(code==='resource-exhausted'?60000:15000)*2**Math.min(failures-1,5));
+    diagnostic(blocked?'denied':'retry-wait',code);
+    if(request && !blocked){
       const retryGeneration=generation;
       retryTimer=w.setTimeout(()=>{
         retryTimer=null;
         if(generation!==retryGeneration || listenerRequest!==request || staff ||
-           !w.userProfile || request.scope!==scope() || request.db!==w.db)return;
+           !w.userProfile || w.navigator?.onLine===false || request.scope!==scope() || request.db!==w.db)return;
         attachStaff(request);
       },Math.max(0,nextAttempt-Date.now()));
     }
@@ -45,7 +48,7 @@
     try{
       entry.unsubscribe=w.fb.onSnapshot(request.query,snapshot=>{
         if(token!==generation||listenerRequest!==request||currentScope!==scope()||currentDB!==w.db)return;
-        if(snapshot.metadata?.fromCache===false){failures=0;nextAttempt=0;diagnostic('available');}
+        if(snapshot.metadata?.fromCache===false){serverConfirmed=true;failures=0;nextAttempt=0;diagnostic('available');}
         return request.callback(snapshot);
       },error=>failed(error,token));
       // A synchronous error callback must not resurrect a failed subscription.
@@ -62,6 +65,13 @@
     listenerRequest=request;
     attachStaff(request);
     return request.stop;
+  }
+  // Resume only an existing failed request; intentional stop clears its ownership.
+  function resumeStaff(){
+    const request=listenerRequest;
+    if(!request || staff || blocked || w.navigator?.onLine===false ||
+       Date.now()<nextAttempt || !w.userProfile || request.scope!==scope() || request.db!==w.db)return false;
+    cancelRetry();attachStaff(request);return true;
   }
   function profileSnapshot(collection,identity,query,timeoutMs){
     const key=collection+'\u0000'+identity;
@@ -92,8 +102,12 @@
     if(el){el.textContent='🟠 INTERNET ONLINE — FIRESTORE / PROFILE UNAVAILABLE';el.style.color='#ffaa00';}
   }
   w.FirestoreRecovery={allowStaff,listenStaff,profileSnapshot,profileUnavailable,classify,
-    report:()=>({state:w.firestoreServiceState||null,active:!!staff,failures,retryAfterMs:Math.max(0,nextAttempt-Date.now()),blocked}),
+    report:()=>({state:w.firestoreServiceState||null,active:!!staff,failures,retryAfterMs:Math.max(0,nextAttempt-Date.now()),blocked,
+      monitoring:!listenerRequest||blocked?'stopped':staff&&serverConfirmed&&w.navigator?.onLine!==false?'connected':'recovering',
+      patrol:Object.values(w.patrolSessionRecovery||{}).reduce((out,r)=>{out[r.blocked?'stopped':r.state==='ready'?'connected':'recovering']++;return out;},{connected:0,recovering:0,stopped:0})}),
     stop:stopStaff,
-    retryStaff:()=>{if(staff||blocked||Date.now()<nextAttempt)return false;failures=0;w.loadStaff?.();return true;}};
+    retryStaff:resumeStaff};
+  w.addEventListener('online',resumeStaff);
+  w.document.addEventListener('visibilitychange',()=>{if(w.document.visibilityState==='visible')resumeStaff();});
   w.addEventListener('userProfileLoaded',()=>{if(currentScope!==scope())w.loadStaff?.();});
 })(window);

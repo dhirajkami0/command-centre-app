@@ -82678,7 +82678,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       const authorized = window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')];
       if (authorized?.dutyActive !== true || String(authorized.sessionId || '').trim() !== sessionId) return false;
       window.StaffLiveGps?.ensure(sessionId, authorized);
-      if (recovery.blocked || recovery.failures >= 3 || Date.now() < recovery.until) return false;
+      if (recovery.blocked || Date.now() < recovery.until || window.navigator?.onLine === false) return false;
 
       // ------------------------------------------------------
       // ALREADY OWNED
@@ -82736,11 +82736,11 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
         const code = String(error?.code || '').replace(/^firestore\//, '') || window.FirestoreRecovery?.classify(error) || 'unknown';
         recovery.failures++;
         recovery.blocked = ['permission-denied','unauthenticated','failed-precondition','invalid-argument'].includes(code);
-        recovery.until = Date.now() + Math.min(300000, (code === 'resource-exhausted' ? 60000 : 15000) * 2 ** (recovery.failures - 1));
-        recovery.state = recovery.blocked ? 'denied' : recovery.failures < 3 ? 'retry-wait' : 'failed';
+        recovery.until = Date.now() + Math.min(300000, (code === 'resource-exhausted' ? 60000 : 15000) * 2 ** Math.min(recovery.failures - 1, 5));
+        recovery.state = recovery.blocked ? 'denied' : 'retry-wait';
         window.StaffRendering?.completeHistory(sessionId); // Settle loading; preserve the explicit error state.
         window.StaffTrackNavigation?.onSessionUpdate(sessionId);
-        if(!recovery.blocked && recovery.failures < 3){
+        if(!recovery.blocked){
           recovery.retryTimer=setTimeout(()=>{
             recovery.retryTimer=null;
             if(window.patrolSessionRecovery?.[sessionId]!==recovery || recovery.generation!==null ||
