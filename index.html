@@ -10912,13 +10912,13 @@ setTimeout(() => {
       // Lifecycle queries need server authority, not a temporary Listen stream.
       // Lite shares this SAME Firebase app's Auth/App Check providers. No Admin or fallback identity.
       let dutyReadModule;
-      window.queryDutyActiveParents = async staff => {
+      window.dutyHistoryExists = async staff => {
         const lite = await (dutyReadModule ||= import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-lite.js')
           .catch(error => {dutyReadModule=null;throw error;}));
         const queryDb=lite.getFirestore(app);
-        return lite.getDocs(lite.query(lite.collection(queryDb,'patrol_tracks'),
-          lite.and(lite.where('cleanName','==',staff),
-            lite.or(lite.where('dutyActive','==',true),lite.where('status','==','ACTIVE')))));
+        const result = await lite.getDocs(lite.query(lite.collection(queryDb,'patrol_tracks'),
+          lite.where('cleanName','==',staff), lite.limit(1)));
+        return !result.empty;
       };
 
       // ==========================================================
@@ -13260,6 +13260,8 @@ async function notifyAndroidDuty(
 
     const bridgeReady =
       await waitForAndroidBridge();
+    if (active && (!ownsConfirmedDuty(window.userProfile?.cleanName, providedSessionId) ||
+        window.dutyAuthorityProvisional)) return false;
 
     if (
       !bridgeReady ||
@@ -19908,9 +19910,11 @@ function rememberEndedDuty(staffId, sessionId) {
 }
 function canRestoreDutyState(staffId, sessionId) {
   return dutyStateIdentity(staffId) === dutyStateIdentity(window.userProfile?.cleanName) &&
-    !!sessionId && !dutyClosedSessions(staffId).has(sessionId);
+    !!sessionId && ownsConfirmedDuty(staffId,sessionId) && !dutyClosedSessions(staffId).has(sessionId);
 }
 function finalizeEndedDutyUi(staffId, sessionId) {
+  if (ownsConfirmedDuty(staffId,sessionId) && dutyClosedSessions(staffId).has(sessionId))
+    confirmDutyAuthority({staff:staffId,dutyActive:false,sessionId});
   if (!sessionId || dutyStateIdentity(staffId) !== dutyStateIdentity(window.userProfile?.cleanName) ||
       (window.currentSessionId && window.currentSessionId !== sessionId)) return false;
   window.isDutyActive = false;
@@ -19945,8 +19949,8 @@ function reconcileRemovedDuty(staffId, sessionId) {
     const live = liveSnap.data(), parent = parentSnap.data();
     if ((live.cleanName && dutyStateIdentity(live.cleanName) !== key) ||
         dutyStateIdentity(parent.cleanName) !== key || parent.sessionId !== sessionId ||
-        live.dutyActive !== false || live.status !== 'ENDED' || live.sessionId ||
-        live.lastEndedSessionId !== sessionId || parent.dutyActive !== false || parent.status !== 'ENDED') return false;
+        live.dutyActive !== false || live.sessionId ||
+        live.lastEndedSessionId !== sessionId || parent.dutyActive !== false) return false;
     rememberEndedDuty(key, sessionId);
     return finalizeEndedDutyUi(key, sessionId);
   }).catch(error => {
@@ -29360,621 +29364,35 @@ function updateDutyUI(isActive){
 //
 // ======================================================
 async function autoShowEndDuty() {
-
-  console.group(
-    "🧠 autoShowEndDuty START"
-  );
-
-  // =====================================================
-  // 🔒 PREVENT DUPLICATE CHECKS
-  // =====================================================
-  if (
-    window.dutyCheckRunning === true
-  ) {
-
-    console.warn(
-      "⛔ Duplicate duty check blocked"
-    );
-
-    console.groupEnd();
-
-    return;
-  }
-
+  const staff = window.userProfile?.cleanName;
+  if (!staff || window.dutyCheckRunning || startDutySubmitting || window.endDutyInProgress) return;
   window.dutyCheckRunning = true;
-
+  updateDutyButton();
+  const previous = window.confirmedDutyAuthority;
   try {
-    if (window.endDutyInProgress === true) return;
-    const endingSessionId = window.currentSessionId || localStorage.getItem('sessionId') || window.endedDutySessionId || '';
-
-    // =====================================================
-    // 🔥 FIREBASE READY
-    // -----------------------------------------------------
-    // Keep this guard unchanged because the duty system
-    // still depends on Firebase being initialized and the
-    // existing live_staff listener being available.
-    // =====================================================
-    if (
-      !window.firebaseReady ||
-      !window.fb ||
-      !window.db
-    ) {
-
-      console.warn(
-        "⏳ Firebase not ready"
-      );
-
-      return;
-    }
-
-    // =====================================================
-    // 🔥 PROFILE
-    // =====================================================
-    if (
-      !window.userProfile ||
-      !window.userProfile.cleanName
-    ) {
-
-      console.warn(
-        "⚠ userProfile missing"
-      );
-
-      return;
-    }
-
-    // =====================================================
-    // 🔥 CLEAN NAME
-    // =====================================================
-    const cleanName =
-      String(
-        window.userProfile.cleanName || ""
-      )
-        .trim()
-        .toUpperCase();
-
-    console.log(
-      "🔥 DUTY CHECK:",
-      cleanName
-    );
-
-    // =====================================================
-    // 🔥 PREVIOUS STATE
-    // -----------------------------------------------------
-    // IMPORTANT:
-    // This remains exactly the transition source of truth.
-    //
-    // false → true = OFF → ON
-    // true  → false = ON → OFF
-    // =====================================================
-    const wasActive =
-      window.isDutyActive === true;
-
-
-    // =====================================================
-    // 🔥 READ CURRENT USER FROM LIVE STAFF CACHE
-    // -----------------------------------------------------
-    // NO getDoc()
-    // NO Firestore read
-    //
-    // loadStaff() already maintains:
-    //
-    // window.liveStaffCache
-    //
-    // The current user's document is keyed by cleanName.
-    // =====================================================
-
-    const liveStaffCache =
-      window.liveStaffCache || {};
-
-    const fireData =
-      liveStaffCache[cleanName] || null;
-
-    const cachedDutySession = String(fireData?.sessionId || fireData?.lastEndedSessionId || '').trim();
-    if (window.currentSessionId && cachedDutySession && window.currentSessionId !== cachedDutySession &&
-        dutyClosedSessions(cleanName).has(cachedDutySession)) return;
-    if (fireData?.dutyActive === true && !canRestoreDutyState(cleanName, fireData.sessionId)) {
-      if (dutyClosedSessions(cleanName).has(fireData.sessionId)) {
-        finalizeEndedDutyUi(cleanName, fireData.sessionId);
-      }
-      return;
-    }
-    if (!fireData && window.isDutyActive === true && window.currentSessionId) {
-      await reconcileRemovedDuty(cleanName, window.currentSessionId);
-      return;
-    }
-
-
-    // =====================================================
-    // 🔍 CACHE STATUS
-    // =====================================================
-    console.log(
-      "📦 LIVE STAFF CACHE:",
-      fireData
-    );
-
-
-    // =====================================================
-    // ❌ CURRENT USER NOT PRESENT IN CACHE
-    // -----------------------------------------------------
-    // This preserves the original NO-DOC behavior.
-    //
-    // Previously:
-    //
-    //     getDoc()
-    //        ↓
-    //     !snap.exists()
-    //
-    // Now:
-    //
-    //     liveStaffCache[cleanName]
-    //        ↓
-    //     !fireData
-    //
-    // The rest of the OFF handling is intentionally
-    // unchanged.
-    // =====================================================
-    if (!fireData) {
-
-      console.warn(
-        "❌ live_staff missing from cache:",
-        cleanName
-      );
-
+    await waitForFirebaseReady();
+    const state = await verifyDutyAuthority(staff);
+    if (window.confirmedDutyAuthority !== previous || window.userProfile?.cleanName !== staff ||
+        startDutySubmitting || window.endDutyInProgress) return;
+    if (state.dutyActive === true) {
+      restoreConfirmedDutySession(staff, {...state, silent:true});
+    } else {
+      confirmDutyAuthority(state);
       window.isDutyActive = false;
-
-      window.currentSessionId = "";
-
-      localStorage.removeItem(
-        "sessionId"
-      );
-
-      localStorage.setItem(
-        "dutyActive",
-        "false"
-      );
-
+      window.currentSessionId = '';
+      localStorage.removeItem('sessionId');
+      localStorage.setItem('dutyActive', 'false');
       updateDutyButton();
-
-      window.__dutyChecked = true;
-
-
-      // =================================================
-      // 🔥 STOP REALTIME ANALYTICS IF STILL ATTACHED
-      // =================================================
-      try {
-
-        if (
-          typeof window.stopRealtimeAnalytics ===
-          "function"
-        ) {
-
-          window.stopRealtimeAnalytics();
-
-        }
-
-      } catch (e) {
-
-        console.error(
-          "❌ stopRealtimeAnalytics failed:",
-          e
-        );
-
-      }
-
-      return;
     }
-
-
-    // =====================================================
-    // 🔥 DATA
-    // -----------------------------------------------------
-    // fireData is now coming from:
-    //
-    //     window.liveStaffCache[cleanName]
-    //
-    // instead of:
-    //
-    //     snap.data()
-    // =====================================================
-
-    console.log(
-      "📦 LIVE STAFF:",
-      fireData
-    );
-
     window.__dutyChecked = true;
-
-
-    // =====================================================
-    // 🔥 SESSION
-    // =====================================================
-    const firestoreSessionId =
-      String(
-        fireData.sessionId || ""
-      ).trim();
-
-
-    // =====================================================
-    // 🟢 DUTY ACTIVE
-    // =====================================================
-    if (
-      fireData.dutyActive === true
-    ) {
-
-      console.log(
-        "🟢 DUTY ACTIVE"
-      );
-
-
-      // =================================================
-      // 🔥 INVALID SESSION
-      // =================================================
-      if (!firestoreSessionId) {
-
-        console.error(
-          "❌ Missing Firestore sessionId"
-        );
-
-        window.isDutyActive = false;
-
-        window.currentSessionId = "";
-
-        localStorage.removeItem(
-          "sessionId"
-        );
-
-        localStorage.setItem(
-          "dutyActive",
-          "false"
-        );
-
-        updateDutyButton();
-
-        return;
-      }
-
-
-      // =================================================
-      // 🔥 GLOBAL STATE
-      // =================================================
-      window.isDutyActive = true;
-
-      window.currentSessionId =
-        firestoreSessionId;
-
-
-      // =================================================
-      // 🔥 SAVE LOCAL SESSION
-      // =================================================
-      localStorage.setItem(
-        "sessionId",
-        firestoreSessionId
-      );
-
-      localStorage.setItem(
-        "dutyActive",
-        "true"
-      );
-
-
-      // =================================================
-      // 🔥 UPDATE BUTTON
-      // =================================================
+  } catch (error) {
+    if (window.confirmedDutyAuthority === previous && window.userProfile?.cleanName === staff &&
+        !startDutySubmitting && !window.endDutyInProgress) {
+      window.dutyAuthorityProvisional = true;
       updateDutyButton();
-
-
-      // =================================================
-      // 🔥 ONLY ON OFF → ON
-      // =================================================
-      if (!wasActive) {
-
-        console.warn(
-          "🚀 OFF → ON transition"
-        );
-
-
-        // =============================================
-        // 🔥 RESET GPS MEMORY
-        // =============================================
-        try {
-
-          localStorage.removeItem(
-            "offlineGPS"
-          );
-
-        } catch (_) {
-          // Ignore localStorage cleanup failure
-        }
-
-
-        try {
-
-          window.lastManualKey = "";
-          window.lastLocationKey = "";
-          window.lastGpsSent = 0;
-          window.gpsQueue = [];
-
-        } catch (_) {
-          // Ignore runtime cleanup failure
-        }
-
-
-        // =============================================
-        // 🔥 START APK GPS
-        // =============================================
-        try {
-
-          console.log(
-            "📱 START APK GPS"
-          );
-
-
-          // =========================================
-          // 🔥 SAME SESSION TO APK
-          // =========================================
-          if (
-            typeof notifyAndroidDuty ===
-            "function"
-          ) {
-
-            await notifyAndroidDuty(
-              true,
-              firestoreSessionId
-            );
-
-            console.log(
-              "✅ APK GPS STARTED"
-            );
-
-          } else {
-
-            console.warn(
-              "⚠ notifyAndroidDuty unavailable"
-            );
-          }
-
-        } catch (e) {
-
-          console.error(
-            "❌ notifyAndroidDuty(true) failed:",
-            e
-          );
-        }
-      }
-
-
-      // =================================================
-      // 🔥 FRONTEND GPS STATE
-      // =================================================
-      if (
-        !window.gpsRunning
-      ) {
-
-        try {
-
-          console.log(
-            "🚀 FRONTEND GPS READY"
-          );
-
-
-          // Existing architecture currently leaves
-          // frontend auto-GPS disabled here.
-          //
-          // startAutoGPS();
-
-        } catch (e) {
-
-          console.error(
-            "❌ Frontend GPS error:",
-            e
-          );
-        }
-      }
-
+      console.warn('Duty status verification deferred', error.message);
     }
-
-
-    // =====================================================
-    // 🔴 DUTY OFF
-    // =====================================================
-    else {
-
-      console.log(
-        "🔴 DUTY OFF"
-      );
-
-
-      // =================================================
-      // 🔥 GLOBAL STATE
-      // =================================================
-      window.isDutyActive = false;
-
-
-      // =================================================
-      // 🔥 CLEAR SESSION
-      // =================================================
-      window.currentSessionId = "";
-
-      localStorage.removeItem(
-        "sessionId"
-      );
-
-      localStorage.setItem(
-        "dutyActive",
-        "false"
-      );
-
-
-      // =================================================
-      // 🔥 UPDATE BUTTON
-      // =================================================
-      updateDutyButton();
-
-
-      // =================================================
-      // 🔥 STOP REALTIME ANALYTICS
-      // =================================================
-      try {
-
-        if (
-          typeof window.stopRealtimeAnalytics ===
-          "function"
-        ) {
-
-          console.log(
-            "🛑 STOP REALTIME ANALYTICS"
-          );
-
-          window.stopRealtimeAnalytics();
-
-        } else if (
-          typeof stopRealtimeAnalytics ===
-          "function"
-        ) {
-
-          console.log(
-            "🛑 STOP REALTIME ANALYTICS"
-          );
-
-          stopRealtimeAnalytics();
-        }
-
-      } catch (e) {
-
-        console.error(
-          "❌ stopRealtimeAnalytics failed:",
-          e
-        );
-      }
-
-
-      // =================================================
-      // 🔥 ONLY ON ON → OFF
-      // =================================================
-      if (wasActive) {
-
-        console.warn(
-          "🛑 ON → OFF transition"
-        );
-
-
-        // =============================================
-        // 🔥 STOP APK GPS
-        // =============================================
-        try {
-
-          console.log(
-            "📱 STOP APK GPS"
-          );
-
-
-          if (
-            typeof notifyAndroidDuty ===
-            "function"
-          ) {
-
-            const stopped = await notifyAndroidDuty(false, endingSessionId, true);
-            if (!stopped) console.warn('Android GPS stop is not confirmed', endingSessionId);
-
-            console.log(
-              "📱 APK GPS STOP REQUEST CHECKED"
-            );
-
-          } else {
-
-            console.warn(
-              "⚠ notifyAndroidDuty unavailable"
-            );
-          }
-
-        } catch (e) {
-
-          console.error(
-            "❌ notifyAndroidDuty(false) failed:",
-            e
-          );
-        }
-
-
-        // =============================================
-        // 🔥 STOP FRONTEND GPS
-        // =============================================
-        try {
-
-          console.log(
-            "🛑 STOP FRONTEND GPS"
-          );
-
-
-          // Existing architecture currently leaves
-          // frontend auto-GPS disabled here.
-          //
-          // stopAutoGPS();
-
-        } catch (_) {
-          // Ignore frontend GPS cleanup failure
-        }
-
-
-        // =============================================
-        // 🔥 CLEAR OFFLINE GPS MEMORY
-        // =============================================
-        try {
-
-          localStorage.removeItem(
-            "offlineGPS"
-          );
-
-        } catch (_) {
-          // Ignore localStorage cleanup failure
-        }
-
-
-        // =============================================
-        // 🔥 CLEAR RUNTIME GPS MEMORY
-        // =============================================
-        try {
-
-          window.lastManualKey = "";
-          window.lastLocationKey = "";
-          window.lastGpsSent = 0;
-          window.gpsQueue = [];
-
-        } catch (_) {
-          // Ignore runtime cleanup failure
-        }
-      }
-    }
-
-
-  } catch (e) {
-
-    // =====================================================
-    // ❌ MAIN DUTY CHECK ERROR
-    // =====================================================
-    console.error(
-      "❌ autoShowEndDuty crash:",
-      e
-    );
-
-
-  } finally {
-
-    // =====================================================
-    // 🔓 RELEASE LOCK
-    // =====================================================
-    setTimeout(
-      () => {
-
-        window.dutyCheckRunning =
-          false;
-
-        console.groupEnd();
-
-      },
-      800
-    );
-  }
+  } finally { window.dutyCheckRunning = false; }
 }
 
     // ======================================================
@@ -30031,13 +29449,8 @@ function initDutyControl(){
 // ======================================================
 // 🔥 SAFE PERIODIC CHECK (NO CHAOS)
 // ======================================================
-setInterval(() => {
-
-  if(window.__dutyChecked){
-    autoShowEndDuty();
-  }
-
-}, 20000);    
+window.addEventListener('online', () => { void autoShowEndDuty(); });
+window.addEventListener('offline', () => { window.dutyAuthorityProvisional = true; updateDutyButton(); });    
   function showMoveOptions(id, btn){
 
   const container = btn.parentElement;
@@ -120585,7 +119998,9 @@ async function loadPatrolPointsFromIDB(
 }
 function captureEndDutyContext(profile) {
   const staffId = String(profile?.cleanName || '').trim();
-  const sessionId = String(localStorage.getItem('sessionId') || window.currentSessionId || '').trim();
+  const authority = window.confirmedDutyAuthority;
+  const sessionId = authority?.staff === staffId && authority.dutyActive === true &&
+    !window.dutyAuthorityProvisional ? authority.sessionId : '';
   if (!staffId || staffId.includes('/') || !sessionId || sessionId.includes('/')) {
     throw new Error('End Duty requires the exact active session. Refresh duty status and retry.');
   }
@@ -120628,16 +120043,18 @@ async function closeEndDutySession(context) {
     // Identity consistency only; these fields do not replace authenticated security rules.
     if (track.cleanName !== staffId || track.sessionId !== sessionId ||
         (live.cleanName && live.cleanName !== staffId)) throw new Error('Session ownership mismatch; no session was changed');
-    if (track.dutyActive === false && track.status === 'ENDED' &&
+    if (track.dutyActive === false &&
         Number.isSafeInteger(track.endedAt) && track.endedAt > 0) {
       if (live.sessionId === sessionId) throw new Error('Inconsistent ended session; reconciliation required');
+      warnDutyStatusMismatch(staffId,sessionId,'patrol_tracks',track);
       return {alreadyEnded:true, endedAt:track.endedAt, dutyStartedAt:track.startedAt};
     }
     if (live.sessionId !== sessionId) throw new Error('Active session changed; no session was ended. Refresh duty status.');
-    if (live.dutyActive !== true || live.status !== 'ACTIVE' || track.dutyActive !== true ||
-        track.status !== 'ACTIVE' || track.endedAt != null) throw new Error('Duty lifecycle conflict; no session was changed');
+    if (live.dutyActive !== true || track.dutyActive !== true || track.endedAt != null) throw new Error('Duty lifecycle conflict; no session was changed');
     if (!Number.isSafeInteger(track.startedAt) || track.startedAt <= 0 || endAtMs < track.startedAt)
       throw new Error('Invalid session start/end time; no session was changed');
+    warnDutyStatusMismatch(staffId,sessionId,'live_staff',live);
+    warnDutyStatusMismatch(staffId,sessionId,'patrol_tracks',track);
     const telemetry = {
       distanceCoveredKm:live.distanceCoveredKm ?? null,
       distanceCoveredMeters:live.distanceCoveredMeters ?? null,
@@ -132707,11 +132124,15 @@ let lastAnalysis = null;
          window.isDutyActive = false;
 
 function handleDutyAction(e){
+  if (window.dutyAuthorityProvisional || window.confirmedDutyAuthority?.staff !== window.userProfile?.cleanName) {
+    void autoShowEndDuty();
+    return;
+  }
 
   console.log("🔥 BUTTON CLICK");
   console.log("👉 isDutyActive:", window.isDutyActive);
 
-  if(window.isDutyActive){
+  if(window.confirmedDutyAuthority?.dutyActive === true){
     console.log("🔴 Opening END DUTY");
     openEndDutyForm();
   } else {
@@ -133319,10 +132740,15 @@ async function reconcilePendingDutyEnd(staffId) {
     const live=await tx.get(window.fb.doc(window.db,'live_staff',staffId));
     if(!parent.exists() || !live.exists())return false;
     const p=parent.data(),l=live.data();
-    return p.cleanName===staffId && p.sessionId===id && p.status==='ENDED' && p.dutyActive===false &&
+    const confirmed = p.cleanName===staffId && p.sessionId===id && p.dutyActive===false &&
       Number.isSafeInteger(p.endedAt) && p.endedAt>0 &&
-      (!l.cleanName || l.cleanName===staffId) && l.status==='ENDED' && l.dutyActive===false &&
+      (!l.cleanName || l.cleanName===staffId) && l.dutyActive===false &&
       !l.sessionId && l.lastEndedSessionId===id;
+    if (confirmed) {
+      warnDutyStatusMismatch(staffId,id,'live_staff',l);
+      warnDutyStatusMismatch(staffId,id,'patrol_tracks',p);
+    }
+    return confirmed;
   })),20000,'Cannot confirm the previous End Duty. Check connectivity and retry End Duty.');
   if(!ended)throw Error('Previous End Duty is not confirmed. Retry End Duty for the existing session first.');
   rememberEndedDuty(staffId,id);removeConfirmedDutyMarker(staffId,id);finalizeEndedDutyUi(staffId,id);
@@ -133341,18 +132767,64 @@ function startDutyDeadline(promise, ms, message) {
     timer=setTimeout(()=>reject(Object.assign(Error(message),{code:'start/query-timeout'})),ms);
   })]).finally(()=>clearTimeout(timer));
 }
-async function queryActiveDutyParents(staff) {
-  if(typeof window.queryDutyActiveParents!=='function')throw Error('Firestore lifecycle reader is not ready');
-  const snapshots=[await window.queryDutyActiveParents(staff)];
-  const refs=new Map();
-  for(const snapshot of snapshots) snapshot.forEach(parent=>{
-    const data=parent.data();
-    if(data.cleanName!==staff) throw Error('Unexpected patrol ownership; no session was changed');
-    if(data.dutyActive===true || data.status==='ACTIVE')
-      refs.set(parent.id,window.fb.doc(window.db,'patrol_tracks',parent.id));
-  });
-  return [...refs.values()];
+// Committed lifecycle operations serialize on this staff member's live document.
+// The active pointer and the terminal pointer both name an exact patrol parent.
+function warnDutyStatusMismatch(staff, sessionId, source, record) {
+  const expected = record.dutyActive === true ? 'ACTIVE' : 'ENDED';
+  if (record.status !== expected) {
+    console.warn('Duty status disagrees with dutyActive', {
+      staff, sessionId, source, dutyActive:record.dutyActive, status:record.status, expected
+    });
+  }
 }
+
+async function readDutyAuthority(transaction, staff) {
+  const liveRef = window.fb.doc(window.db, 'live_staff', staff);
+  const snap = await transaction.get(liveRef);
+  const live = snap.exists() ? snap.data() : null;
+  const fail = () => { throw Error('Duty history requires reconciliation. Verify the exact current or last ended session.'); };
+  if (live && (live.cleanName !== staff || typeof live.dutyActive !== 'boolean')) fail();
+  const active = live?.dutyActive === true;
+  if (live && !active && live.sessionId != null && live.sessionId !== '') fail();
+  const id = active ? live.sessionId : live?.lastEndedSessionId;
+  if ((id == null || id === '') && !active) return {staff, dutyActive:false, sessionId:''};
+  if (typeof id !== 'string' || !id.trim() || id !== id.trim() || id.includes('/')) fail();
+  const parent = await transaction.get(window.fb.doc(window.db, 'patrol_tracks', id));
+  const data = parent.exists() ? parent.data() : null;
+  if (!data || data.cleanName !== staff || data.sessionId !== id ||
+      !Number.isSafeInteger(data.startedAt) || data.startedAt <= 0 ||
+      data.dutyActive !== active ||
+      (live.startedAt != null && live.startedAt !== data.startedAt) ||
+      (active && (data.endedAt != null || live.endedAt != null)) ||
+      (!active && (!Number.isSafeInteger(data.endedAt) || data.endedAt < data.startedAt))) fail();
+  warnDutyStatusMismatch(staff,id,'live_staff',live);
+  warnDutyStatusMismatch(staff,id,'patrol_tracks',data);
+  return {staff, dutyActive:active, sessionId:id, startedAt:data.startedAt, endedAt:data.endedAt, live};
+}
+
+async function verifyDutyAuthority(staff) {
+  if (navigator.onLine === false) throw Error('Duty status is unverified while offline.');
+  const state = await startDutyDeadline(window.fb.runTransaction(window.db,
+    transaction => readDutyAuthority(transaction, staff)), 20000,
+    'Cannot verify duty status from the server. Retry when connected.');
+  if (!state.sessionId) {
+    const history = await startDutyDeadline(window.dutyHistoryExists(staff), 20000,
+      'Cannot verify prior duty history.');
+    if (history) throw Error('Prior duties have no authoritative pointer. Reconcile the current session before starting.');
+  }
+  return state;
+}
+
+function confirmDutyAuthority(state) {
+  window.confirmedDutyAuthority = {staff:state.staff, dutyActive:state.dutyActive, sessionId:state.sessionId};
+  window.dutyAuthorityProvisional = false;
+}
+
+function ownsConfirmedDuty(staff, id) {
+  const state = window.confirmedDutyAuthority;
+  return state?.staff === staff && state.dutyActive === true && state.sessionId === id;
+}
+
 function cleanStartDutyUi(request) {
   if(!request || dutyStartRequest!==request)return;
   clearTimeout(request.timer);
@@ -133364,51 +132836,33 @@ function cleanStartDutyUi(request) {
   dutyStartRequest=null;
   updateDutyButton();
 }
-async function checkUnresolvedDutyStart(staff) {
-  const saved=localStorage.getItem('pendingDutyStart:'+staff);
-  if(!saved)return;
-  const pending=JSON.parse(saved);
-  if(pending.staff!==staff || typeof pending.sessionId!=='string' || !pending.sessionId.startsWith(staff+'_'))
-    throw Error('Invalid pending Start Duty identity; reconcile before retrying');
-  // Read-only transaction is server-authoritative. Absence does not cancel an older request.
-  const state=await startDutyDeadline(window.fb.runTransaction(window.db,async tx=>{
-    const live=await tx.get(window.fb.doc(window.db,'live_staff',staff));
-    const parent=await tx.get(window.fb.doc(window.db,'patrol_tracks',pending.sessionId));
-    return {live:live.exists()?live.data():null,parent:parent.exists()?parent.data():null};
-  }),20000,'Cannot verify the previous Start Duty outcome. Check connectivity; do not start again.');
-  const active=d=>d && (d.dutyActive===true || d.status==='ACTIVE');
-  if(state.live?.sessionId===pending.sessionId && state.parent?.sessionId===pending.sessionId &&
-      state.live.cleanName===staff && state.parent.cleanName===staff && active(state.live) && active(state.parent))
-    throw Error('The previous Start Duty committed ('+pending.sessionId+'). Refresh duty state; do not create another duty.');
-  throw Error('Previous Start Duty outcome requires reconciliation ('+pending.sessionId+'). No new session was created.');
+function readPendingDutyStart(staff) {
+  const saved = localStorage.getItem('pendingDutyStart:' + staff);
+  if (!saved) return null;
+  const pending = JSON.parse(saved);
+  if (pending.staff !== staff || typeof pending.sessionId !== 'string' ||
+      pending.sessionId.includes('/') || !pending.sessionId.startsWith(staff + '_') ||
+      !Number.isSafeInteger(pending.startMs) || pending.startMs <= 0 ||
+      !pending.sessionId.endsWith('_' + pending.startMs))
+    throw Error('Invalid pending Start Duty identity. Reconcile the pending attempt before retrying.');
+  return pending;
 }
 
-// Returns only a uniquely matching authoritative ACTIVE session; never repairs history.
-function resolveExistingDutySession(staff,live,parents) {
-  const active=parents.filter(p=>p.data.dutyActive===true || p.data.status==='ACTIVE');
-  if(!active.length)return null;
-  const p=active[0],d=p.data;
-  if(active.length!==1 || d.cleanName!==staff || d.sessionId!==p.id ||
-      d.status!=='ACTIVE' || d.dutyActive!==true || d.endedAt!=null ||
-      !Number.isSafeInteger(d.startedAt) || d.startedAt<=0 ||
-      !live || live.cleanName!==staff || live.sessionId!==p.id ||
-      live.status!=='ACTIVE' || live.dutyActive!==true || live.endedAt!=null ||
-      (live.startedAt!=null && live.startedAt!==d.startedAt))
-    throw Error('Existing ACTIVE patrol session requires reconciliation; no history was changed. Sessions: '+active.map(p=>p.id).join(', '));
-  return {sessionId:p.id,startedAt:d.startedAt,live};
-}
 function restoreConfirmedDutySession(staff,state) {
   const id=state.sessionId;
-  if(!canRestoreDutyState(staff,id))throw Error('Confirmed ACTIVE session conflicts with local closure state: '+id+'. Refresh duty status; no session was changed.');
+  if (window.userProfile?.cleanName !== staff || dutyClosedSessions(staff).has(id))
+    throw Error('Confirmed ACTIVE session conflicts with the current profile or local closure. Refresh duty status.');
+  const alreadyRestored = ownsConfirmedDuty(staff,id) && window.currentSessionId === id;
+  confirmDutyAuthority(state);
   // Do not run fresh-duty analytics/counter/cache initialization for an existing session.
   window.currentSessionId=id;window.dutyStartedAt=state.startedAt;window.isDutyActive=true;
   localStorage.setItem('sessionId',id);localStorage.setItem('dutyStartedAt',String(state.startedAt));
   localStorage.setItem('dutyActive','true');updateDutyButton();
   if(typeof closeDutyForm==='function')closeDutyForm();
   // Existing Firestore listeners remain responsible for marker position and freshness.
-  void dutyMeasure('start.restoreAndroid',()=>notifyAndroidDuty(true,id))
+  if (!alreadyRestored) void dutyMeasure('start.restoreAndroid',()=>notifyAndroidDuty(true,id))
     .catch(error=>console.error('Active session restored; Android handoff requires retry',error));
-  setTimeout(()=>alert('Existing active duty restored: '+id),0);
+  if (!state.silent) setTimeout(()=>alert('Existing active duty restored: '+id),0);
 }
 
 async function startDuty(event) {
@@ -133460,24 +132914,31 @@ async function startDuty(event) {
     const comptString = comptArray.join(", ");
 
 
-    if (comptArray.length === 0) {
-      alert("❌ Select at least one compartment");
-      console.groupEnd();
-      return;
-    }
-
-    if (window.isDutyActive === true) {
-      alert("⚠ Duty already active");
-      console.groupEnd();
-      return;
-    }
 // ===========================================================
 // WAIT FOR ANDROID LOCATION PERMISSION
 // ===========================================================
 
 startDutySubmitting = true;
 ownedRequest={button:startBtn,originalText:startBtn.innerHTML,phase:'permission',committed:false};
-dutyStartRequest=ownedRequest;
+  dutyStartRequest=ownedRequest;
+  const staffId = String(profile.cleanName || '').trim();
+  if (!staffId || staffId.includes('/') || cleanName(profile.rawName || profile.name || '') !== staffId)
+    throw Error('Staff identity mismatch. Refresh the authenticated profile.');
+  await waitForFirebaseReady();
+  await reconcilePendingDutyEnd(staffId);
+  const preflight = await verifyDutyAuthority(staffId);
+  if (window.userProfile !== profile) throw Error('Staff profile changed during verification. Retry Start Duty.');
+  if (preflight.dutyActive === true) {
+    restoreConfirmedDutySession(staffId, preflight);
+    localStorage.removeItem('pendingDutyStart:' + staffId);
+    return;
+  }
+  confirmDutyAuthority(preflight);
+  if (comptArray.length === 0) { alert('Select at least one compartment'); return; }
+  const pending = readPendingDutyStart(staffId);
+  const retry = pending && pending.sessionId !== preflight.sessionId ? pending : null;
+  if (retry && preflight.endedAt != null && retry.startMs < preflight.endedAt)
+    throw Error('Previous Start Duty predates the latest confirmed closure. Reconcile the pending attempt.');
 try {
 
     if (
@@ -133597,8 +133058,7 @@ await waitForFirebaseReady();
   cleanName(payload.leader);
 if (!cleanLeader || cleanLeader!==String(profile.cleanName || '').trim()) throw Error('Staff identity mismatch; refresh the authenticated profile');
 
-await reconcilePendingDutyEnd(cleanLeader);
-await checkUnresolvedDutyStart(cleanLeader);
+
 
 const now =
   new Date();
@@ -133614,15 +133074,14 @@ const now =
 // Do NOT create another start-time source.
 // =====================================================
 
-const startMs =
-  Date.now();
+const startMs = retry?.startMs ?? Date.now();
 
 // =====================================================
 // 🔥 SESSION ID
 // =====================================================
 
 const sessionId =
-  `${cleanLeader}_${crypto.randomUUID()}_${startMs}`;
+  retry?.sessionId ?? `${cleanLeader}_${crypto.randomUUID()}_${startMs}`;
 // =====================================================
 // 🔥 SAVE LOCALLY
 // =====================================================
@@ -133965,37 +133424,21 @@ updatedAt: Date.now(),
       serverTimestamp()
 
   };
-ownedRequest.phase='query';
-const activeParentRefs=await startDutyDeadline(dutyMeasure('start.activeQuery',()=>queryActiveDutyParents(cleanLeader)),20000,
-  'Cannot verify ACTIVE duties from the Firestore server. Check connectivity and retry. No Start Duty transaction was attempted.');
 ownedRequest.phase='transaction';
 ownedRequest.pendingKey='pendingDutyStart:'+cleanLeader;
 ownedRequest.sessionId=sessionId;
 localStorage.setItem(ownedRequest.pendingKey,JSON.stringify({staff:cleanLeader,sessionId,startMs}));
-ownedRequest.timer=setTimeout(()=>{
-  if(dutyStartRequest!==ownedRequest || ownedRequest.committed)return;
-  startBtn.innerHTML='Awaiting server confirmation — do not retry';
-  startBtn.title='Outcome not yet known. Session: '+sessionId;
-},20000);
-const existingDuty=await dutyMeasure('start.transaction',()=>window.fb.runTransaction(window.db,async transaction=>{
-  const live=await transaction.get(liveRef), parent=await transaction.get(trackRef);
-  if (parent.exists()) throw Error('Session ID collision; retry Start Duty');
-  const oldParents=[];
-  for (const ref of activeParentRefs) {
-    const old=await transaction.get(ref);
-    if(old.exists())oldParents.push({id:ref.id || String(ref.path).split('/').pop(),data:old.data()});
-  }
-  const existing=resolveExistingDutySession(cleanLeader,live.exists()?live.data():null,oldParents);
-  if(existing)return existing; // Read-only restoration: no new session or lifecycle writes.
-  if (live.exists()) {
-    const data=live.data();
-    if ((data.cleanName && data.cleanName!==cleanLeader) || data.dutyActive===true ||
-        data.status==='ACTIVE' || String(data.sessionId || '').trim())
-      throw Error('Existing active or inconsistent duty requires reconciliation');
-  }
-  transaction.set(liveRef,liveData,{merge:true});
+const existingDuty=await startDutyDeadline(dutyMeasure('start.transaction',()=>window.fb.runTransaction(window.db,async transaction=>{
+  if (window.userProfile !== profile) throw Error('Staff profile changed during Start Duty.');
+  const authority = await readDutyAuthority(transaction, cleanLeader);
+  if (authority.dutyActive === true) return authority;
+  if (authority.dutyActive !== preflight.dutyActive || authority.sessionId !== preflight.sessionId)
+    throw Error('Duty changed during Start Duty. Verify the latest duty and retry.');
+  const parent = await transaction.get(trackRef);
+  if (parent.exists()) throw Error('Session ID collision; reconcile the pending Start Duty.');
+  transaction.set(liveRef,{...liveData, startedAt:startMs, endedAt:null},{merge:true});
   transaction.set(trackRef,trackData);
-}));
+})),20000,'Start Duty outcome is unknown. Retry to verify the same attempt.');
 if(existingDuty){
   clearTimeout(ownedRequest.timer);
   localStorage.removeItem(ownedRequest.pendingKey);
@@ -134004,6 +133447,7 @@ if(existingDuty){
   return;
 }
 ownedRequest.committed=true;
+confirmDutyAuthority({staff:cleanLeader,dutyActive:true,sessionId});
 ownedRequest.phase='committed';
 clearTimeout(ownedRequest.timer);
 localStorage.removeItem(ownedRequest.pendingKey);
@@ -134209,8 +133653,7 @@ try {
   } catch(err){
     // Keep the attempted ID on ambiguous transaction failures for authoritative reconciliation.
     if(ownedRequest?.phase==='transaction' && (
-        ['permission-denied','unauthenticated','failed-precondition','aborted','invalid-argument'].includes(String(err.code||'').replace('firestore/','')) ||
-        /^(Session ID collision;|Existing ACTIVE patrol session requires reconciliation;|Existing active or inconsistent duty requires reconciliation)/.test(String(err.message||''))))
+        ['permission-denied','unauthenticated','failed-precondition','aborted','invalid-argument'].includes(String(err.code||'').replace('firestore/',''))))
       localStorage.removeItem(ownedRequest.pendingKey);
     cleanStartDutyUi(ownedRequest);
     console.error(
@@ -134261,6 +133704,13 @@ try {
   // =====================================================
   // 🔒 OPTIONAL: TRANSITION STATE (prevents flicker)
   // =====================================================
+  if (window.userProfile?.cleanName && (window.dutyAuthorityProvisional ||
+      window.confirmedDutyAuthority?.staff !== window.userProfile.cleanName)) {
+    btn.style.background = '#777';
+    label.textContent = 'VERIFY DUTY STATUS';
+    if (icon) icon.className = 'fa-solid fa-circle-question';
+    return;
+  }
   if(window.__dutyUpdating === true){
     btn.style.background = "#9e9e9e";
     label.innerHTML = "⏳ Updating...";
@@ -134271,7 +133721,7 @@ try {
   // =====================================================
   // 🟢 ACTIVE DUTY
   // =====================================================
-  if(window.isDutyActive === true){
+  if(window.confirmedDutyAuthority?.dutyActive === true){
 
     btn.style.background = "#d32f2f";
     label.innerHTML = "END DUTY";
