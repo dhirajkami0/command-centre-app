@@ -1,0 +1,190 @@
+{
+  "label": "HISTORICAL SATELLITE THERMAL ANOMALY — UNVERIFIED",
+  "productionEligible": false,
+  "observations": [
+    {
+      "product": "VIIRS_NOAA20_SP",
+      "satellite": "NOAA-20",
+      "instrument": "VIIRS",
+      "latitude": 26.59284,
+      "longitude": 89.78192,
+      "latCanonical": "26.59284",
+      "lonCanonical": "89.78192",
+      "acquiredAt": "2025-03-25T07:08:00.000Z",
+      "acquiredAtIST": "2025-03-25T12:38:00.000+05:30",
+      "retrievedAt": "2026-11-23T17:16:30.344Z",
+      "confidence": "l",
+      "frpMW": 2.51,
+      "brightnessTemperatureKelvin": {
+        "bright_ti4": 335.68,
+        "bright_ti5": 308.79
+      },
+      "scanKm": 0.39,
+      "trackKm": 0.36,
+      "daynight": "D",
+      "raw": {
+        "latitude": "26.59284",
+        "longitude": "89.78192",
+        "bright_ti4": "335.68",
+        "scan": "0.39",
+        "track": "0.36",
+        "acq_date": "2025-03-25",
+        "acq_time": "708",
+        "satellite": "N20",
+        "instrument": "VIIRS",
+        "confidence": "l",
+        "version": "2",
+        "bright_ti5": "308.79",
+        "frp": "2.51",
+        "daynight": "D",
+        "type": "0"
+      },
+      "sourceFileSha256": "ad788d17e520b877ef87619e6826014bed99800b6d108e0a84501c7ed144a0cd",
+      "geometryHash": "dccc8b2f9a1dfa0f2404af4b86c17e8ef4b851c52c60f566f2603055057b8d82",
+      "boundaryClassification": "INSIDE_PROVISIONAL_BTR",
+      "attribution": {
+        "division": "BTR_E",
+        "range": "SouthRydak",
+        "beat": "Marakata",
+        "compartment": "MARA BL2B",
+        "state": "ATTRIBUTED",
+        "candidates": [
+          {
+            "division": "BTR_E",
+            "range": "SouthRydak",
+            "beat": "Marakata",
+            "compartment": "MARA BL2B"
+          }
+        ]
+      },
+      "dataQualityWarnings": [],
+      "verificationStatus": "HISTORICAL SATELLITE THERMAL ANOMALY — UNVERIFIED",
+      "dataLabel": "HISTORICAL SATELLITE THERMAL ANOMALY — UNVERIFIED",
+      "productionEligible": false,
+      "synthetic": false,
+      "freshness": "HISTORICAL_OBSERVATION",
+      "id": "821f3fabc122e71c43d13f900bce43f00874a457301ef80686ba3ad442fa4033"
+    },
+    {
+      "product": "VIIRS_NOAA20_SP",
+      "satellite": "NOAA-20",
+      "instrument": "VIIRS",
+      "latitude": 26.6066,
+      "longitude": 89.78333,
+      "latCanonical": "26.6066",
+      "lonCanonical": "89.78333",
+      "acquiredAt": "2025-03-25T07:08:00.000Z",
+      "acquiredAtIST": "2025-03-25T12:38:00.000+05:30",
+      "retrievedAt": "2026-11-23T17:16:30.344Z",
+      "confidence": "l",
+      "frpMW": 3.25,
+      "brightnessTemperatureKelvin": {
+        "bright_ti4": 336.06,
+        "bright_ti5": 308.4
+      },
+      "scanKm": 0.39,
+      "trackKm": 0.36,
+      "daynight": "D",
+      "raw": {
+        "latitude": "26.6066",
+        "longitude": "89.78333",
+        "bright_ti4": "336.06",
+        "scan": "0.39",
+        "track": "0.36",
+        "acq_date": "2025-03-25",
+        "acq_time": "708",
+        "satellite": "N20",
+        "instrument": "VIIRS",
+        "confidence": "l",
+        "version": "2",
+        "bright_ti5": "308.4",
+        "frp": "3.25",
+        "daynight": "D",
+        "type": "0"
+      },
+      "sourceFileSha256": "ad788d17e520b877ef87619e6826014bed99800b6d108e0a84501c7ed144a0cd",
+      "geometryHash": "dccc8b2f9a1dfa0f2404af4b86c17e8ef4b851c52c60f566f2603055057b8d82",
+      "boundaryClassification": "INSIDE_PROVISIONAL_BTR",
+      "attribution": {
+        "division": "BTR_E",
+        "range": "NorthRydak",
+        "beat": "Teamari",
+        "compartment": "C Rydak BL5",
+        "state": "ATTRIBUTED",
+        "candidates": [
+          {
+            "division": "BTR_E",
+            "range": "NorthRydak",
+            "beat": "Teamari",
+            "compartment": "C Rydak BL5"
+          }
+        ]
+      },
+      "dataQualityWarnings": [],
+      "verificationStatus": "HISTORICAL SATELLITE THERMAL ANOMALY — UNVERIFIED",
+      "dataLabel": "HISTORICAL SATELLITE THERMAL ANOMALY — UNVERIFIED",
+      "productionEligible": false,
+      "synthetic": false,
+      "freshness": "HISTORICAL_OBSERVATION",
+      "id": "d435b8398facb9f3d9bdd5fbef97d8d9a1bf7d80571b451f0a2b14caf9a53b47"
+    },
+    {
+      "product": "VIIRS_SNPP_SP",
+      "satellite": "S-NPP",
+      "instrument": "VIIRS",
+      "latitude": 26.58263,
+      "longitude": 89.42053,
+      "latCanonical": "26.58263",
+      "lonCanonical": "89.42053",
+      "acquiredAt": "2025-03-26T06:26:00.000Z",
+      "acquiredAtIST": "2025-03-26T11:56:00.000+05:30",
+      "retrievedAt": "2026-11-23T17:16:33.285Z",
+      "confidence": "n",
+      "frpMW": 4.01,
+      "brightnessTemperatureKelvin": {
+        "bright_ti4": 330.58,
+        "bright_ti5": 298.38
+      },
+      "scanKm": 0.41,
+      "trackKm": 0.6,
+      "daynight": "D",
+      "raw": {
+        "latitude": "26.58263",
+        "longitude": "89.42053",
+        "bright_ti4": "330.58",
+        "scan": "0.41",
+        "track": "0.6",
+        "acq_date": "2025-03-26",
+        "acq_time": "626",
+        "satellite": "N",
+        "instrument": "VIIRS",
+        "confidence": "n",
+        "version": "2",
+        "bright_ti5": "298.38",
+        "frp": "4.01",
+        "daynight": "D",
+        "type": "0"
+      },
+      "sourceFileSha256": "071f3e6a76b156b57017fba4c8415620edad15a64fdec29bf28f0efe75deb9d4",
+      "geometryHash": "dccc8b2f9a1dfa0f2404af4b86c17e8ef4b851c52c60f566f2603055057b8d82",
+      "boundaryClassification": "OUTSIDE_PROVISIONAL_BTR",
+      "attribution": {
+        "division": null,
+        "range": null,
+        "beat": null,
+        "compartment": null,
+        "state": "COMPARTMENT_UNAVAILABLE",
+        "candidates": []
+      },
+      "dataQualityWarnings": [
+        "ATTRIBUTION_COMPARTMENT_UNAVAILABLE"
+      ],
+      "verificationStatus": "HISTORICAL SATELLITE THERMAL ANOMALY — UNVERIFIED",
+      "dataLabel": "HISTORICAL SATELLITE THERMAL ANOMALY — UNVERIFIED",
+      "productionEligible": false,
+      "synthetic": false,
+      "freshness": "HISTORICAL_OBSERVATION",
+      "id": "408b0cb85f2b31b3a4ee25f2e12d2868ec4e899c97668e97237a705f839df8eb"
+    }
+  ]
+}
