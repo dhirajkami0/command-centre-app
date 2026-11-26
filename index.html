@@ -120224,21 +120224,40 @@ async function dutyClaimJob(sessionId) {
     return claimed;
   });
 }
-async function dutyReadEndedPoints(job) {
-  const local = await loadPatrolPointsFromIDB(job.sessionId);
-  const ref = window.fb.collection(window.db,'patrol_tracks',job.sessionId,'points');
-  const remote = {};
-  // Two server reads, at most 5 seconds apart. Never interprets an offline cache as complete.
-  for (let pass=0;pass<2;pass++) {
-    const query = window.fb.query(ref,window.fb.orderBy('time','asc'));
-    if (typeof window.fb.getDocsFromServer !== 'function') throw Error('Server-only point read unavailable');
-    const snapshot = await dutyDeadline(window.fb.getDocsFromServer(query));
-    snapshot.forEach(doc => { remote[doc.id] = doc.data(); });
-    if (!pass) await new Promise(resolve => setTimeout(resolve,5000));
+async function dutyReadEndedPoints(job, attempt = null) {
+  const local=await loadPatrolPointsFromIDB(job.sessionId);
+  const ref=window.fb.collection(window.db,'patrol_tracks',job.sessionId,'points');
+  const key=JSON.stringify([job.staffId,job.sessionId,job.startedAt,job.endedAt,job.leaseToken]);
+  const reuse=!!attempt && attempt.job===job && attempt.db===window.db && attempt.staff===window.userProfile?.cleanName && attempt.key===key && !!attempt.latest;
+  const previous=reuse ? attempt.latest : null;
+  const remote=Object.assign({},previous||{});
+  let latest=null;
+  // First verification still makes two fresh server reads, five seconds apart.
+  // A later verification in this SAME claimed attempt reuses only the preceding
+  // server snapshot as its first observation, and ALWAYS obtains a fresh final one.
+  for (let pass=reuse?1:0;pass<2;pass++) {
+    if (pass) await new Promise(resolve=>setTimeout(resolve,5000));
+    const query=window.fb.query(ref,window.fb.orderBy('time','asc'));
+    if (typeof window.fb.getDocsFromServer!=='function') throw Error('Server-only point read unavailable');
+    const snapshot=await dutyDeadline(window.fb.getDocsFromServer(query));
+    latest={};snapshot.forEach(doc=>{latest[doc.id]=doc.data();});
+    Object.assign(remote,latest);
   }
-  const full = dutyNormalizePoints(job.sessionId,[local,remote],job.startedAt,job.endedAt);
-  // If native queue count exceeds reconciled points, retain retry state rather than certify truncation.
-  if (Number(job.expectedPointCount || 0) > full.length) throw Error('Offline GPS synchronization pending');
+  // Do not let the reused earlier observation conceal a server-side removal
+  // or a now-invalidated stored point. This is independent of point count.
+  if (reuse) {
+    for (const [id,point] of Object.entries(previous)) {
+      if (!(id in latest)) throw Error('GPS history changed during verification; explicit review required');
+      const before=dutyNormalizePoints(job.sessionId,[[point]],job.startedAt,job.endedAt);
+      const after=dutyNormalizePoints(job.sessionId,[[latest[id]]],job.startedAt,job.endedAt);
+      const signature=points=>JSON.stringify(points.map(p=>[p.time,p.lat,p.lng,p.breakTrack===true]));
+      if (signature(before)!==signature(after))
+        throw Error('GPS history changed during verification; explicit review required');
+    }
+  }
+  const full=dutyNormalizePoints(job.sessionId,[local,remote],job.startedAt,job.endedAt);
+  if (Number(job.expectedPointCount||0)>full.length) throw Error('Offline GPS synchronization pending');
+  if (attempt && attempt.job===job && attempt.db===window.db && attempt.staff===window.userProfile?.cleanName && attempt.key===key) attempt.latest=latest;
   return full;
 }
 function dutyBuildTelegramReport(job) {
@@ -120283,9 +120302,11 @@ async function dutyProcessReport(sessionId) {
   if (window.dutyReportFlights.has(sessionId)) return window.dutyReportFlights.get(sessionId);
   const flight = (async () => {
     let job;
+    let pointReads;
     try {
       job = await dutyClaimJob(sessionId);
       if (!job) return;
+      pointReads={job,db:window.db,staff:window.userProfile?.cleanName,key:JSON.stringify([job.staffId,job.sessionId,job.startedAt,job.endedAt,job.leaseToken]),latest:null};
       const save = async () => {job.leaseUntil=Date.now()+120000;await dutySaveJob(job,job.leaseToken);};
       // Optional analytics is serialized after authoritative closure, never in it.
       if (job.analyticsPending) {
@@ -120306,7 +120327,7 @@ async function dutyProcessReport(sessionId) {
       // Late queued points must not permanently poison a failed first upload.
       if (job.snapshot && !job.kmlUrl && !job.historyDone && !job.distanceDone && !job.registerAck && !job.analyticsDone) delete job.snapshot;
       if (!job.snapshot) {
-        const full = await dutyReadEndedPoints(job), clean = dutyFilterRoute(full);
+        const full = await dutyReadEndedPoints(job,pointReads), clean = dutyFilterRoute(full);
         const segments = dutySegments(clean).filter(segment => segment.length >= 2);
         job.routeOutcome = !full.length ? 'NO_GPS' : !segments.length ? 'INSUFFICIENT_ROUTE' : 'ROUTE';
         const telemetry=full.slice().reverse().find(p=>p.distanceCoveredKm!=null && Number.isFinite(Number(p.distanceCoveredKm)) && Number(p.distanceCoveredKm)>=0);
@@ -120336,7 +120357,7 @@ async function dutyProcessReport(sessionId) {
       const points = Object.values(await loadPatrolPointsFromIDB(job.sessionId) || {});
       // After restart the route must be recovered against the original snapshot; never overwrite a good KML.
       if (job.routeOutcome === 'ROUTE' && !job.kmlUrl) {
-        const full = await dutyReadEndedPoints(job), clean = dutyFilterRoute(full);
+        const full = await dutyReadEndedPoints(job,pointReads), clean = dutyFilterRoute(full);
         if (clean.length !== job.pointCount || await dutyRouteFingerprint(clean)!==job.routeFingerprint)
           throw Error('Late GPS changed report snapshot; explicit revision required');
         job.kmlUrl = await dutyDeadline(uploadPatrolKML(job.sessionId,clean,job.snapshot.distanceKm,job.snapshot,{uploadOnly:true}));
@@ -120357,7 +120378,7 @@ async function dutyProcessReport(sessionId) {
       if (!job.historyDone) {
         if (job.routeOutcome === 'ROUTE') {
           const clean = job.reportRoutePayload ? JSON.parse(job.reportRoutePayload) :
-            job.reportRouteCacheRequired ? await idbKeyval.get('end_duty_route_v1_'+job.sessionId) : dutyFilterRoute(await dutyReadEndedPoints(job));
+            job.reportRouteCacheRequired ? await idbKeyval.get('end_duty_route_v1_'+job.sessionId) : dutyFilterRoute(await dutyReadEndedPoints(job,pointReads));
           if (!clean || await dutyRouteFingerprint(clean)!==job.routeFingerprint) throw Error('Frozen report route unavailable; original device recovery required');
           await dutyDeadline(processHistoryTrack(clean,job.sessionId,job.snapshot.distanceKm,job.identity,job.snapshot.monthKey));
         }
