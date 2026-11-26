@@ -22240,9 +22240,9 @@ const nextDistance =
           // ====================================================
 
           const analytics = {
-            distanceContributions,
-
             ...existing,
+
+            distanceContributions,
 
             gridId,
 
@@ -89080,6 +89080,7 @@ async function flushAnalyticsBuffer(reportContext = null){
   let successfulGridFlushes = 0;
 
   let failedGridFlushes = 0;
+  let deferredAnalyticsError=null;
 
 
   try {
@@ -89630,7 +89631,8 @@ if(
 
   // IMPORTANT:
   // Put the untouched data back.
-  restoreGridBuffer(
+  deferredAnalyticsError=Error('[ANALYTICS_REVIEW_REQUIRED] Canonical session-cell evidence unavailable');
+restoreGridBuffer(
     gridId,
     data
   );
@@ -89750,7 +89752,8 @@ const transactionResult =
 // SUCCESSFUL GRID FLUSH
 // ====================================================
 
-successfulGridFlushes++;
+if(transactionResult?.success!==true) throw Error('[ANALYTICS_REVIEW_REQUIRED] Analytics transaction unacknowledged: '+String(transactionResult?.reason||'UNKNOWN'));
+        successfulGridFlushes++;
 
           analyticsChanged = true;
 
@@ -89776,6 +89779,7 @@ successfulGridFlushes++;
         catch(err){
 
           failedGridFlushes++;
+          if (!deferredAnalyticsError || String(err.message||'').startsWith('[ANALYTICS_REVIEW_REQUIRED]')) deferredAnalyticsError=err;
 
 
           // ====================================================
@@ -89829,6 +89833,7 @@ successfulGridFlushes++;
     // No reason to invalidate caches or refresh UI.
     // ==========================================================
 
+    if (detached && Object.keys(bufferOwner.analyticsBuffer || {}).length) throw deferredAnalyticsError || Error('Analytics has unacknowledged grids');
     if(
       !analyticsChanged
     ){
@@ -120309,20 +120314,7 @@ async function dutyProcessReport(sessionId) {
       pointReads={job,db:window.db,staff:window.userProfile?.cleanName,key:JSON.stringify([job.staffId,job.sessionId,job.startedAt,job.endedAt,job.leaseToken]),latest:null};
       const save = async () => {job.leaseUntil=Date.now()+120000;await dutySaveJob(job,job.leaseToken);};
       // Optional analytics is serialized after authoritative closure, never in it.
-      if (job.analyticsPending) {
-        let buffer=window.endDutyAnalytics?.[sessionId];
-        if (!buffer) {const raw=localStorage.getItem('endDutyAnalytics:'+sessionId);if(raw) buffer=JSON.parse(raw);}
-        if (!buffer && job.analyticsCacheRequired) buffer=await idbKeyval.get('end_duty_analytics_v1_'+sessionId);
-        if (!buffer) throw Error('Captured analytics unavailable; original device recovery required');
-        const payload=JSON.stringify(buffer);
-        if (payload.length>250000) {
-          await idbKeyval.set('end_duty_analytics_v1_'+sessionId,buffer);
-          job.analyticsCacheRequired=true;job.analyticsPayload='';
-        } else {job.analyticsPayload=payload;job.analyticsCacheRequired=false;}
-        job.analyticsPending=false;await save();
-        localStorage.removeItem('endDutyAnalytics:'+sessionId);
-        delete window.endDutyAnalytics?.[sessionId];
-      }
+
       // Before any report side effect, refresh a provisional snapshot on each retry.
       // Late queued points must not permanently poison a failed first upload.
       if (job.snapshot && !job.kmlUrl && !job.historyDone && !job.distanceDone && !job.registerAck && !job.analyticsDone) delete job.snapshot;
@@ -120385,23 +120377,41 @@ async function dutyProcessReport(sessionId) {
         job.historyDone=true;await save();
       }
       } catch (error) {historyFailure=error;}
-      let analyticsFailure=null;
-      try {
-      if (!job.analyticsDone) {
-        const storedAnalytics=job.analyticsCacheRequired ? await idbKeyval.get('end_duty_analytics_v1_'+job.sessionId) : job.analyticsPayload != null ? JSON.parse(job.analyticsPayload || '{}') : job.analyticsBuffer;
-        if (job.analyticsCacheRequired && !storedAnalytics) throw Error('Durable analytics cache unavailable on this device');
-        const buffer = dutyPlain(storedAnalytics || {});
-        for (const data of Object.values(buffer)) for (const key of ['touchedCells','visitSessions','sessionCellVisits','distanceSegmentKeys'])
-          if (Array.isArray(data[key])) data[key]=new Set(data[key]);
-        await dutyDeadline(flushAnalyticsBuffer({buffer,monthKey:job.snapshot.monthKey}));
-        job.analyticsDone=true;await save();
-      }
-      } catch (error) {analyticsFailure=error;}
       if (!job.distanceDone) {
         await dutyDeadline(commitAuthoritativeSessionDistance(job.sessionId,job.snapshot.distanceKm,job.endedAt,'session_report'));
         job.distanceDone=true;await save();
       }
       if (!job.registerAck) {job.registerAck=await dutyRegister(job);await save();}
+      let analyticsFailure=null;
+      try {
+      if (job.analyticsPending) {
+        let buffer=window.endDutyAnalytics?.[sessionId];
+        if (!buffer) {const raw=localStorage.getItem('endDutyAnalytics:'+sessionId);if(raw) buffer=JSON.parse(raw);}
+        if (!buffer && job.analyticsCacheRequired) buffer=await idbKeyval.get('end_duty_analytics_v1_'+sessionId);
+        if (buffer==null && job.analyticsPayload!=null) buffer=JSON.parse(job.analyticsPayload);
+        if (buffer==null) throw Error('[ANALYTICS_INPUT_UNAVAILABLE] Captured analytics unavailable; original device recovery required');
+        if (typeof buffer!=='object' || Array.isArray(buffer)) throw Error('[ANALYTICS_REVIEW_REQUIRED] Invalid captured analytics; original evidence required');
+        const payload=JSON.stringify(buffer);
+        if (payload.length>250000) {
+          await idbKeyval.set('end_duty_analytics_v1_'+sessionId,buffer);
+          job.analyticsCacheRequired=true;job.analyticsPayload='';
+        } else {job.analyticsPayload=payload;job.analyticsCacheRequired=false;}
+        job.analyticsPending=false;await save();
+        localStorage.removeItem('endDutyAnalytics:'+sessionId);
+        delete window.endDutyAnalytics?.[sessionId];
+      }
+      if (!job.analyticsDone) {
+        const storedAnalytics=job.analyticsCacheRequired ? await idbKeyval.get('end_duty_analytics_v1_'+job.sessionId) : job.analyticsPayload != null ? JSON.parse(job.analyticsPayload || '{}') : job.analyticsBuffer;
+        if (storedAnalytics==null) throw Error('[ANALYTICS_INPUT_UNAVAILABLE] Durable analytics unavailable on this device; original evidence required');
+        if (typeof storedAnalytics!=='object' || Array.isArray(storedAnalytics)) throw Error('[ANALYTICS_REVIEW_REQUIRED] Invalid analytics payload; original evidence required');
+        const buffer = dutyPlain(storedAnalytics);
+        for (const data of Object.values(buffer)) for (const key of ['touchedCells','visitSessions','sessionCellVisits','distanceSegmentKeys'])
+          if (Array.isArray(data[key])) data[key]=new Set(data[key]);
+        await dutyDeadline(flushAnalyticsBuffer({buffer,monthKey:job.snapshot.monthKey}));
+        job.analyticsDone=true;await save();
+      }
+      } catch (error) {analyticsFailure=error?.name==='SyntaxError' ? Error('[ANALYTICS_REVIEW_REQUIRED] Invalid serialized analytics; original evidence required') : error;}
+
       if (historyFailure || analyticsFailure) throw historyFailure || analyticsFailure;
       job.state='COMPLETE';job.leaseUntil=0;job.nextAttemptAt=0;await dutySaveJob(job,job.leaseToken);
       showToast('Patrol report registered: '+job.sessionId);
