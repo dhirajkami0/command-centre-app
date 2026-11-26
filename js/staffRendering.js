@@ -115,11 +115,13 @@
     function valid(p, id) {
         const lat = Number(p?.lat), lon = Number(p?.lon);
         const fixTime = time(p), sessionStart = Number(id.match(/_(\d{13})$/)?.[1] || 0);
-        return !!p && String(p.sessionId || id).trim() === id &&
+        const accepted = !!p && String(p.sessionId || id).trim() === id &&
             Number.isFinite(lat) && Number.isFinite(lon) && lat !== 0 && lon !== 0 &&
             Math.abs(lat) <= 90 && Math.abs(lon) <= 180 &&
             fixTime > 0 && fixTime <= Date.now() + maxClockSkewMs &&
             (!sessionStart || fixTime >= sessionStart || isStartSeed(p, id));
+        if(p&&!accepted)window.BTRMarkerDiagnostics?.hit('gpsCandidateReject',id,{reason:String(p.sessionId||id).trim()!==id?'OWNERSHIP':!Number.isFinite(lat)||!Number.isFinite(lon)||lat===0||lon===0||Math.abs(lat)>90||Math.abs(lon)>180?'INVALID_COORDINATES':!(fixTime>0)||fixTime>Date.now()+maxClockSkewMs?'INVALID_OR_FUTURE_TIME':'PRE_SESSION_TIME'});
+        return accepted;
     }
     function newer(p, pid, entry) {
         return !entry.point || time(p) > time(entry.point) ||
@@ -163,7 +165,7 @@
     }
     function latest(id) {
         id = String(id || '').trim();
-        if (!owner(id)) { acceptedPositions.delete(id); ungroup(id); return null; }
+        if (!owner(id)) {window.BTRMarkerDiagnostics?.hit('selectionMissing',id,{reason:'NO_CURRENT_OWNER'}); acceptedPositions.delete(id); ungroup(id); return null; }
         const entry = index(id), patrol = entry?.point;
         const live = w.getLiveStaffPointForSession?.(id);
         let p = valid(live, id) ? live : null;
@@ -176,12 +178,13 @@
         if (accepted && (!p || time(p) < time(accepted) ||
             (time(p) === time(accepted) &&
              (Number(p.lat) !== Number(accepted.lat) || Number(p.lon) !== Number(accepted.lon))))) p = accepted;
+        if(p===accepted && accepted){window.BTRMarkerDiagnostics?.hit('acceptedRetained',id,{});}
         if (p) acceptedPositions.set(id, {...p, sessionId: id});
         group(id, p);
-        if(!p)return null;
+        if(!p){window.BTRMarkerDiagnostics?.hit('selectionMissing',id,{reason:'NO_SELECTED_POINT'});return null;}
         const result={...p,id:String(p.id || entry?.pointId || ''),sessionId:id};
         if(isStartSeed(p,id))startSeedCopies.add(result);
-        return result;
+        window.BTRMarkerDiagnostics?.hit('selected',id,{age:(Date.now()-time(result))/1000});return result;
     }
     function changed(id, pid, p, existed, removed) {
         const cache = w.sessionPointCache?.[id];
@@ -325,7 +328,7 @@
         const text = hours > 0 ? `${hours} hr ${minutes % 60} min` : `${minutes} min`;
         if (node.textContent !== text) node.textContent = text;
     }
-    function refresh(marker) {
+    function refresh(marker) {window.BTRMarkerDiagnostics?.hit('renderer',marker,{});
         const currentStaff = w.visibleStaffCache?.[marker.__staffKey];
         if(currentStaff && !mayShowStaff(currentStaff)) {
             hideRestrictedMarker(marker.__staffKey);

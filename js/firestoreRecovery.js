@@ -19,7 +19,7 @@
       w.console.info('Firestore recovery',{state,code:code||null,attempts:failures});};
   function cancelRetry(){if(retryTimer!==null)w.clearTimeout(retryTimer);retryTimer=null;}
   function detach(){cancelRetry();generation++;try{staff?.unsubscribe?.();}catch(_){/* State cleanup must survive an SDK unsubscribe failure. */}finally{staff=null;serverConfirmed=false;w.staffListenerActive=false;w.staffUnsubscribe=null;}}
-  function stopStaff(){listenerRequest=null;detach();}
+  function stopStaff(){window.BTRMarkerDiagnostics?.hit('centralStop',null,{});listenerRequest=null;detach();}
   let currentScope=scope(), currentDB=w.db;
   function allowStaff(){
     const changed=currentScope!==scope()||currentDB!==w.db;
@@ -27,7 +27,7 @@
     return !!w.userProfile && !staff && !blocked && Date.now()>=nextAttempt;
   }
   function failed(error,token){
-    if(token!==generation)return;
+    if(token!==generation)return;window.BTRMarkerDiagnostics?.hit('centralError',null,{});
     const request=listenerRequest;
     const code=classify(error);detach();failures++;
     blocked=['permission-denied','unauthenticated','failed-precondition','invalid-argument'].includes(code);
@@ -44,10 +44,10 @@
     }
   }
   function attachStaff(request){
-    const token=++generation, entry={unsubscribe:null};staff=entry;
+    const token=++generation, entry={unsubscribe:null};staff=entry;window.BTRMarkerDiagnostics?.hit('centralAttach',null,{});
     try{
-      entry.unsubscribe=w.fb.onSnapshot(request.query,snapshot=>{
-        if(token!==generation||listenerRequest!==request||currentScope!==scope()||currentDB!==w.db)return;
+      entry.unsubscribe=w.fb.onSnapshot(request.query,snapshot=>{window.BTRMarkerDiagnostics?.hit('centralCallback',null,{fromCache:snapshot.metadata?.fromCache,hasPendingWrites:snapshot.metadata?.hasPendingWrites});
+        if(token!==generation||listenerRequest!==request||currentScope!==scope()||currentDB!==w.db){window.BTRMarkerDiagnostics?.hit('centralDiscard',null,{});return;}
         if(snapshot.metadata?.fromCache===false){serverConfirmed=true;failures=0;nextAttempt=0;diagnostic('available');}
         return request.callback(snapshot);
       },error=>failed(error,token));

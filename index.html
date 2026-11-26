@@ -104,6 +104,7 @@
 ======================================================= -->
 <link rel="stylesheet" href="css/offence/offenceCascade.css">
 <script src="js/leaflet.js"></script>
+<script src="js/markerDiagnostics.js"></script>
 <script src="js/staffPopup.js"></script>
 <link rel="stylesheet" href="css/staffPopup.css">
 <script src="js/staffTrackNavigation.js"></script>
@@ -81876,25 +81877,25 @@ window.getLiveStaffPointForSession = function(id){
   const staff=window.visibleStaffCache?.[name],point=staff?.__liveGpsPoint;
   return staff?.dutyActive===true && String(staff.sessionId||'').trim()===id && point?.sessionId===id ? point : null;
 };
-window.applyLiveStaffGps = function(raw,key){
+window.applyLiveStaffGps = function(raw,key){window.BTRMarkerDiagnostics?.hit('gpsInput',key,{});
   const staff=window.visibleStaffCache?.[key],id=String(staff?.sessionId||'').trim();
-  if(!staff || staff.dutyActive!==true || raw?.dutyActive===false || !id || String(raw?.sessionId||'').trim()!==id)return false;
-  if(raw.lat==null || raw.lon==null || raw.lat==='' || raw.lon==='')return false;
+  if(!staff || staff.dutyActive!==true || raw?.dutyActive===false || !id || String(raw?.sessionId||'').trim()!==id){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'OWNERSHIP'});return false;}
+  if(raw.lat==null || raw.lon==null || raw.lat==='' || raw.lon===''){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'MISSING_COORDINATES'});return false;}
   const lat=Number(raw.lat),lon=Number(raw.lon);
-  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180||(lat===0&&lon===0))return false;
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180||(lat===0&&lon===0)){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'INVALID_COORDINATES'});return false;}
   const time=window.StaffRendering?.pointTime({time:raw.gpsTime??raw.time});
-  if(!Number.isFinite(time)||time<=0||time>Date.now()+2*60*1000)return false;
+  if(!Number.isFinite(time)||time<=0||time>Date.now()+2*60*1000){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'INVALID_OR_FUTURE_TIME'});return false;}
   // Existing session IDs end in duty-start milliseconds; retained prior-duty GPS is not current.
   const sessionStart=Number(id.match(/_(\d{13})$/)?.[1]||0);
-  if(sessionStart && time<sessionStart)return false;
+  if(sessionStart && time<sessionStart){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'PRE_SESSION_TIME'});return false;}
   const old=staff.__liveGpsPoint;
   if(old?.sessionId===id && old.time<=Date.now()+2*60*1000 && (time<old.time ||
-      (time===old.time && (lat!==Number(old.lat)||lon!==Number(old.lon)))))return false;
+      (time===old.time && (lat!==Number(old.lat)||lon!==Number(old.lon))))){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'OLDER_OR_EQUAL_CONFLICT'});return false;}
   const selected=window.StaffRendering?.latest(id);
   if(selected && time===window.StaffRendering.pointTime(selected) &&
-      (lat!==Number(selected.lat)||lon!==Number(selected.lon)))return false;
+      (lat!==Number(selected.lat)||lon!==Number(selected.lon))){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'SELECTED_EQUAL_CONFLICT'});return false;}
   const point={...raw,cleanName:key,id:'live:'+id+':'+time,sessionId:id,lat,lon,time};
-  staff.__liveGpsPoint=point;
+  staff.__liveGpsPoint=point;window.BTRMarkerDiagnostics?.hit('gpsAccepted',key,{age:(Date.now()-time)/1000});window.BTRMarkerDiagnostics?.hit('staffCache',key,{});
   if(window.liveStaffCache?.[key])window.liveStaffCache[key].__liveGpsPoint=point;
   window.patrolSessionStaff ??= Object.create(null);
   window.patrolSessionStaff[id]=staff;
@@ -82133,7 +82134,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       window.StaffStartupDiagnostics?.mark('T6');
       window.StaffStartupDiagnostics?.record(sessionId, {historyAttachedAt: window.StaffStartupDiagnostics.now()});
       const generation = {};
-      recovery.generation = generation;
+      recovery.generation = generation;window.BTRMarkerDiagnostics?.hit('patrolAttach',sessionId,{});
       const stillOwned = () => window.patrolSessionRecovery?.[sessionId] === recovery &&
         recovery.generation === generation && recovery.db === window.db &&
         recovery.scope === JSON.stringify([window.userProfile?.cleanName || window.userProfile?.name || '',
@@ -82142,7 +82143,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
         String(window.visibleStaffCache?.[cleanName(staff?.cleanName || staff?.name || '')]?.sessionId || '').trim() === sessionId;
       let unsubscribe;
       const failed = error => {
-        if (recovery.generation !== generation) return;
+        if (recovery.generation !== generation) return;window.BTRMarkerDiagnostics?.hit('patrolError',sessionId,{});
         recovery.generation = null;
         try { unsubscribe?.(); } catch (_) {}
         delete window.patrolSessionListeners[sessionId];
@@ -82169,8 +82170,8 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       try { unsubscribe = onSnapFb(
         pointsRef,
         {includeMetadataChanges: true},
-        pointSnap => {
-          if (!stillOwned()) return;
+        pointSnap => {window.BTRMarkerDiagnostics?.hit('patrolCallback',sessionId,{fromCache:pointSnap.metadata?.fromCache,hasPendingWrites:pointSnap.metadata?.hasPendingWrites});
+          if (!stillOwned()) {window.BTRMarkerDiagnostics?.hit('patrolDiscard',sessionId,{});return;}
           try {
             const ownerStaff = window.patrolSessionStaff[sessionId] || staff;
             const diagnostic = window.StaffStartupDiagnostics;
@@ -82179,11 +82180,11 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
             window.StaffRendering?.reconcileFastSeeds(sessionId, pointSnap);
             window.processPatrolSessionSnapshot(sessionId, pointSnap, ownerStaff);
             diagnostic?.processing(sessionId, {historyProcessingMs: diagnostic.now() - began});
-            window.StaffRendering?.completeHistory(sessionId, pointSnap);
+            window.StaffRendering?.completeHistory(sessionId, pointSnap);window.BTRMarkerDiagnostics?.hit('patrolComplete',sessionId,{});
             if(pointSnap.metadata?.fromCache===false){recovery.failures=0;recovery.until=0;recovery.state='ready';}
             window.StaffTrackNavigation?.onSessionUpdate(sessionId);
           } catch(error){
-            console.error("❌ PATROL SESSION SNAPSHOT PROCESSING ERROR:", sessionId, error);
+            window.BTRMarkerDiagnostics?.hit('patrolProcessingError',sessionId);console.error("❌ PATROL SESSION SNAPSHOT PROCESSING ERROR:", sessionId, error);
             failed(error);
           }
         },
@@ -82208,7 +82209,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
   window.releasePatrolSessionListener = function(sessionId){
     try {
       sessionId = String(sessionId || "").trim();
-      if(!sessionId) return;
+      if(!sessionId) return;window.BTRMarkerDiagnostics?.hit('patrolStop',sessionId,{});
       window.StaffLiveGps?.release(sessionId);
       if (window.patrolSessionRecovery?.[sessionId]) {
         if(window.patrolSessionRecovery[sessionId].retryTimer != null)
@@ -82487,7 +82488,7 @@ function(sessionId, pointSnap, staffMember){
       const existed = Object.prototype.hasOwnProperty.call(pointCache, pointId);
       if(change.type === "removed"){
 
-        delete pointCache[pointId];
+        delete pointCache[pointId];window.BTRMarkerDiagnostics?.hit('sessionCache',sessionId);
         window.StaffRendering?.changed(sessionId, pointId, null, existed, true);
 
         return;
@@ -82524,7 +82525,7 @@ function(sessionId, pointSnap, staffMember){
         || Math.abs(lat)>90 || Math.abs(lon)>180 || (lat===0 && lon===0)
       ){
         if(existed){
-          delete pointCache[pointId];
+          delete pointCache[pointId];window.BTRMarkerDiagnostics?.hit('sessionCache',sessionId);
           window.StaffRendering?.changed(sessionId, pointId, null, true, true);
         }
         return;
@@ -82574,7 +82575,7 @@ function(sessionId, pointSnap, staffMember){
       // ======================================================
 
       pointCache[pointId] =
-        cachedPoint;
+        cachedPoint;window.BTRMarkerDiagnostics?.hit('sessionCache',sessionId,{});
       window.StaffRendering?.changed(sessionId, pointId, cachedPoint, existed, false);
 
 
@@ -84200,7 +84201,7 @@ window.visibleStaffCache[
   __liveGpsPoint: window.visibleStaffCache[staffCacheData.cleanName]?.sessionId === staffCacheData.sessionId
     ? window.visibleStaffCache[staffCacheData.cleanName].__liveGpsPoint : null
 };
-window.applyLiveStaffGps(s,staffCacheData.cleanName);
+window.BTRMarkerDiagnostics?.hit('staffMetadataCache',staffCacheData.cleanName);window.applyLiveStaffGps(s,staffCacheData.cleanName);
 
 activeUsers.add(
   staffCacheData.cleanName
@@ -84209,7 +84210,7 @@ activeUsers.add(
 staff.push(s);
           } catch(e){
             const errorStaffName = cleanName(docSnap?.id || "");
-            console.error("❌ Staff parse error:", errorStaffName, docSnap?.id || "", e);
+            window.BTRMarkerDiagnostics?.hit('centralProcessingError');console.error("❌ Staff parse error:", errorStaffName, docSnap?.id || "", e);
             return;
           }
         });
@@ -86778,7 +86779,7 @@ try {
   );
 
 }
-      } catch(e){
+      window.BTRMarkerDiagnostics?.hit('centralComplete',null,{});} catch(e){window.BTRMarkerDiagnostics?.hit('centralProcessingError',null,{});
         console.error("❌ loadStaff crash:", e);
       }
     }

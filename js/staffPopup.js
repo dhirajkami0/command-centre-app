@@ -55,7 +55,7 @@
             return new Popup({autoPan: false, keepInView: false, autoClose: false,
                 closeOnClick: false, className: 'btr-live-staff-popup'}).setContent(html);
         },
-        setPosition(marker, lat, lng) {
+        setPosition(marker, lat, lng) {window.BTRMarkerDiagnostics?.hit('position',marker,{});
             const current = marker.getLatLng();
             if (current.lat !== lat || current.lng !== lng) marker.setLatLng([lat, lng]);
         },
