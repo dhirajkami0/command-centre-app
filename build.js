@@ -233,8 +233,10 @@ if (lower.endsWith(".min.js")) {
         try {
 
             const source = fs.readFileSync(fullPath, "utf8");
+            // Embed the executing diagnostic module build, without any runtime request.
+            const instrumentedSource = source.replaceAll("__GG_READ_DIAGNOSTIC_BUILD__", BUILD_VERSION);
 
-const obfuscated = JavaScriptObfuscator.obfuscate(source, {
+const obfuscated = JavaScriptObfuscator.obfuscate(instrumentedSource, {
 
     compact: true,
 

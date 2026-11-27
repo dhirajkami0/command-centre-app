@@ -104,6 +104,7 @@
 ======================================================= -->
 <link rel="stylesheet" href="css/offence/offenceCascade.css">
 <script src="js/leaflet.js"></script>
+<script src="js/firestoreReadDiagnostics.js"></script>
 <script src="js/markerDiagnostics.js"></script>
 <script src="js/staffPopup.js"></script>
 <link rel="stylesheet" href="css/staffPopup.css">
@@ -10878,7 +10879,7 @@ setTimeout(() => {
 
         increment
 
-      } = firestoreModule;
+      } = window.GreenGuardReadDiagnostics?.wrap(firestoreModule) || firestoreModule;
 
 
       // ==========================================================
@@ -10915,6 +10916,7 @@ setTimeout(() => {
       let dutyReadModule;
       window.dutyHistoryExists = async staff => {
         const lite = await (dutyReadModule ||= import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-lite.js')
+          .then(module=>window.GreenGuardReadDiagnostics?.wrap(module,{origin:'lite-server'})||module)
           .catch(error => {dutyReadModule=null;throw error;}));
         const queryDb=lite.getFirestore(app);
         const result = await lite.getDocs(lite.query(lite.collection(queryDb,'patrol_tracks'),
@@ -11092,53 +11094,8 @@ setTimeout(() => {
       }
 
 
-      // ==========================================================
-      // 🧹 CLEANUP TASKS
-      //
-      // KEEP EXISTING FLOW
-      // ==========================================================
-
-      setTimeout(
-
-        () => {
-
-          try {
-
-            cleanupOldTracks();
-
-          }
-
-          catch (e) {
-
-            console.warn(
-              "⚠ cleanupOldTracks fail",
-              e
-            );
-
-          }
-
-        },
-
-        5000
-
-      );
-
-
-      // ==========================================================
-      // ♻ DAILY CLEANUP
-      // ==========================================================
-
-      setInterval(
-
-        cleanupOldTracks,
-
-        24 *
-        60 *
-        60 *
-        1000
-
-      );
-
+      // Historical patrol cleanup is not an authorized client-startup operation.
+      // No retention query/deletion timer is installed.
 
       // ==========================================================
       // ✅ FIREBASE INITIALIZATION COMPLETE
@@ -16279,6 +16236,7 @@ async function(aoiGeometry){
 
 function clearMonthHistory(){
 
+  releaseMonthHistoryRealtime();
   try{
 
     // ==================================
@@ -23290,261 +23248,78 @@ async function loadMonthHistoryFromIDB(
 // The listener is created only when history is actually needed.
 // ============================================================
 
-async function ensureMonthHistoryRealtime(
-    monthKey
-){
-
-    if(
-        window.monthHistoryListeners[
-            monthKey
-        ]
-    ){
-
-        return;
-
-    }
-
-
-    if(
-        window.monthHistoryListenerPromises[
-            monthKey
-        ]
-    ){
-
-        return await
-            window.monthHistoryListenerPromises[
-                monthKey
-            ];
-
-    }
-
-
-    window.monthHistoryListenerPromises[
-        monthKey
-    ] =
-        (async function(){
-
-            try{
-
-                // ==================================================
-                // RESTORE IDB FIRST
-                // ==================================================
-
-                let cachedDocuments =
-                    await loadMonthHistoryFromIDB(
-                        monthKey
-                    );
-
-
-                window.monthHistoryCache[
-                    monthKey
-                ] ??= {
-
-                    documents:
-                        [],
-
-                    initialized:
-                        false
-
-                };
-
-
-                if(
-                    cachedDocuments.length > 0
-                ){
-
-                    window.monthHistoryCache[
-                        monthKey
-                    ].documents =
-                        cachedDocuments;
-
-                }
-
-
-                // ==================================================
-                // FIRESTORE QUERY
-                // ==================================================
-
-                const historyRef =
-                    window.fb.collection(
-                        window.db,
-                        "history"
-                    );
-
-
-                const q =
-                    window.fb.query(
-
-                        historyRef,
-
-                        window.fb.where(
-                            "monthKey",
-                            "==",
-                            monthKey
-                        ),
-
-                        window.fb.where(
-                            "clipStatus",
-                            "==",
-                            "SUCCESS"
-                        )
-
-                    );
-
-
-                // ==================================================
-                // WAIT FOR FIRST SNAPSHOT
-                // ==================================================
-
-                await new Promise(
-                    function(
-                        resolve,
-                        reject
-                    ){
-
-                        let firstSnapshot =
-                            true;
-
-
-                        const unsubscribe =
-                            window.fb.onSnapshot(
-
-                                q,
-
-                                function(snapshot){
-
-                                    try{
-
-                                        const cache =
-                                            window.monthHistoryCache[
-                                                monthKey
-                                            ];
-
-
-                                        cache.documents =
-                                            snapshot.docs.map(
-                                                function(docSnap){
-
-                                                    return {
-
-                                                        id:
-                                                            docSnap.id,
-
-                                                        data:
-                                                            docSnap.data() ||
-                                                                {}
-
-                                                    };
-
-                                                }
-                                            );
-
-
-                                        cache.initialized =
-                                            true;
-
-
-                                        window.monthHistoryListeners[
-                                            monthKey
-                                        ] =
-                                            unsubscribe;
-
-
-                                        scheduleMonthHistoryIDBSave(
-                                            monthKey
-                                        );
-
-
-                                        if(
-                                            firstSnapshot
-                                        ){
-
-                                            firstSnapshot =
-                                                false;
-
-                                            resolve();
-
-                                        }
-
-                                    }
-                                    catch(err){
-
-                                        if(
-                                            firstSnapshot
-                                        ){
-
-                                            firstSnapshot =
-                                                false;
-
-                                            reject(
-                                                err
-                                            );
-
-                                        }
-
-                                    }
-
-                                },
-
-                                function(error){
-
-                                    if(
-                                        firstSnapshot
-                                    ){
-
-                                        firstSnapshot =
-                                            false;
-
-                                        reject(
-                                            error
-                                        );
-
-                                    }
-                                    else{
-
-                                        console.error(
-                                            "❌ Month history realtime listener failed:",
-                                            error
-                                        );
-
-                                    }
-
-                                }
-
-                            );
-
-                    }
-                );
-
-            }
-            catch(err){
-
-                console.error(
-                    "❌ ensureMonthHistoryRealtime failed:",
-                    err
-                );
-
-                throw err;
-
-            }
-            finally{
-
-                delete
-                    window.monthHistoryListenerPromises[
-                        monthKey
-                    ];
-
-            }
-
-        })();
-
-
-    return await
-        window.monthHistoryListenerPromises[
-            monthKey
-        ];
-
+function monthHistoryOwnerScope(){
+  const p=window.userProfile||{};
+  return JSON.stringify([p.cleanName||p.name||'',p.role||'',p.division||'',p.range||'']);
 }
+function releaseMonthHistoryRealtime(monthKey=null,invalidateView=true){
+  if(invalidateView){window.monthHistoryRenderGeneration=(window.monthHistoryRenderGeneration||0)+1;window.monthHistoryOpening=null;}
+  const owners=window.monthHistoryReadOwners||{};
+  for(const [key,owner]of Object.entries(owners)){
+    if(monthKey!=null&&key!==monthKey)continue;
+    owner.active=false;
+    try{owner.unsubscribe?.();}catch(_){}
+    owner.reject?.(Error('Month history display closed'));
+    if(window.monthHistoryListeners?.[key]===owner.unsubscribe)delete window.monthHistoryListeners[key];
+    if(window.monthHistoryListenerPromises?.[key]===owner.promise)delete window.monthHistoryListenerPromises[key];
+    delete owners[key];
+  }
+  // RAM/IDB history is intentionally retained; no point data or operational layer is touched.
+}
+async function ensureMonthHistoryRealtime(monthKey){
+  if(!monthKey||!window.db||!window.fb)return;
+  window.monthHistoryReadOwners??=Object.create(null);
+  const owners=window.monthHistoryReadOwners,scope=monthHistoryOwnerScope(),db=window.db;
+  for(const key of Object.keys(owners))if(key!==monthKey)releaseMonthHistoryRealtime(key,false);
+  const existing=owners[monthKey];
+  if(existing?.active&&existing.scope===scope&&existing.db===db)return existing.promise;
+  if(existing)releaseMonthHistoryRealtime(monthKey,false);
+  const owner={db,scope,active:true,unsubscribe:null,reject:null,promise:null};owners[monthKey]=owner;
+  const current=()=>owner.active&&owners[monthKey]===owner&&window.db===db&&monthHistoryOwnerScope()===scope;
+  owner.promise=(async()=>{
+    const cached=await loadMonthHistoryFromIDB(monthKey);
+    if(!current())throw Error('Month history ownership changed');
+    window.monthHistoryCache[monthKey]??={documents:[],initialized:false};
+    if(cached.length)window.monthHistoryCache[monthKey].documents=cached;
+    const fb=window.fb,q=fb.query(fb.collection(db,'history'),fb.where('monthKey','==',monthKey));
+    return new Promise((resolve,reject)=>{
+      let initial=true;owner.reject=reject;
+      const failed=error=>{
+        if(!current())return;
+        owner.active=false;try{owner.unsubscribe?.();}catch(_){}
+        if(window.monthHistoryListeners[monthKey]===owner.unsubscribe)delete window.monthHistoryListeners[monthKey];
+        if(initial){initial=false;reject(error);}else console.error('Month history listener unavailable',error);
+      };
+      try{
+        const unsubscribe=fb.onSnapshot(q,snapshot=>{
+          if(!current()){
+            if(owner.active){owner.active=false;try{owner.unsubscribe?.();}catch(_){}
+              if(window.monthHistoryListeners[monthKey]===owner.unsubscribe)delete window.monthHistoryListeners[monthKey];
+              if(initial){initial=false;reject(Error('Month history ownership changed'));}}
+            return;
+          }
+          try{
+            window.monthHistoryCache[monthKey].documents=snapshot.docs.map(doc=>({id:doc.id,data:doc.data()||{}}));
+            window.monthHistoryCache[monthKey].initialized=true;
+            scheduleMonthHistoryIDBSave(monthKey);
+            if(initial){initial=false;owner.reject=null;resolve();}
+          }catch(error){failed(error);}
+        },failed);
+        owner.unsubscribe=unsubscribe;
+        if(current())window.monthHistoryListeners[monthKey]=unsubscribe;else unsubscribe();
+      }catch(error){failed(error);}
+    });
+  })();
+  window.monthHistoryListenerPromises[monthKey]=owner.promise;
+  try{return await owner.promise;}catch(error){
+    owner.active=false;try{owner.unsubscribe?.();}catch(_){}
+    if(window.monthHistoryListeners[monthKey]===owner.unsubscribe)delete window.monthHistoryListeners[monthKey];
+    throw error;
+  }finally{
+    if(window.monthHistoryListenerPromises[monthKey]===owner.promise)delete window.monthHistoryListenerPromises[monthKey];
+  }
+}
+
 // ============================================================
 // 2. UPDATED showMonthHistory
 // ------------------------------------------------------------
@@ -23572,6 +23347,7 @@ async function ensureMonthHistoryRealtime(
 // ============================================================
 
 async function showMonthHistory() {
+  const historyGeneration=window.monthHistoryRenderGeneration||0;
   try {
     // ==========================================================
     // 🔒 MASTER GRID READY CHECK
@@ -23636,6 +23412,7 @@ async function showMonthHistory() {
     //     RAM -> render
     // ==========================================================
     await ensureMonthHistoryRealtime(monthKey);
+    if(historyGeneration!==(window.monthHistoryRenderGeneration||0))return;
 
     // ==========================================================
     // 🧠 GET SHARED RAM CACHE
@@ -23740,6 +23517,7 @@ async function showMonthHistory() {
     // 📊 ANALYTICS SUMMARY
     // ==========================================================
     const analyticsSummary = await getAnalyticsSummary(analyticsGridIds, monthKey);
+    if(historyGeneration!==(window.monthHistoryRenderGeneration||0))return;
 
     // ==========================================================
     // 🏷 POPUP TITLE
@@ -23780,6 +23558,7 @@ async function showMonthHistory() {
     // 🎨 BATCH RENDER
     // ==========================================================
     function renderBatch() {
+      if(historyGeneration!==(window.monthHistoryRenderGeneration||0))return;
       const end = Math.min(currentIndex + batchSize, tracksToRender.length);
 
       for (; currentIndex < end; currentIndex++) {
@@ -23842,6 +23621,7 @@ async function showMonthHistory() {
     // 🚀 START RENDERING
     // ==========================================================
     requestAnimationFrame(renderBatch);
+    return true;
 
   } catch (err) {
     console.error("❌ showMonthHistory failure", err);
@@ -27474,62 +27254,15 @@ async function renderMonthlyHeatmap(
 }
 
     async function toggleMonthHistory(){
-
+  if(window.historyLoaded||window.monthHistoryOpening){clearMonthHistory();return;}
+  const request={};window.monthHistoryOpening=request;
   try{
-
-    // ==================================
-    // 👁 HISTORY ALREADY ACTIVE
-    // ==================================
-
-    if(window.historyLoaded){
-
-      clearMonthHistory();
-
-      return;
-    }
-
-    // ==================================
-    // 📜 LOAD HISTORY
-    // ==================================
-
-    await showMonthHistory();
-
-    // ==================================
-    // 👁 UPDATE EYE
-    // ==================================
-
-    const eye =
-
-      document.getElementById(
-        "historyEye"
-      );
-
-    if(eye){
-
-      eye.className =
-        "fa-solid fa-eye-slash";
-    }
-
-    // ==================================
-    // ✅ ACTIVE
-    // ==================================
-
-    window.historyLoaded =
-      true;
-
-    console.log(
-      "📜 History ON"
-    );
-
-  }
-
-  catch(err){
-
-    console.error(
-      "❌ toggleMonthHistory",
-      err
-    );
-  }
+    const shown=await showMonthHistory();
+    if(window.monthHistoryOpening!==request||shown!==true)return;
+    const eye=document.getElementById('historyEye');if(eye)eye.className='fa-solid fa-eye-slash';
+    window.historyLoaded=true;
+  }catch(error){console.error('Month history display unavailable',error);}
+  finally{if(window.monthHistoryOpening===request)window.monthHistoryOpening=null;}
 }
 
     // ============================================================
@@ -51748,7 +51481,7 @@ async function loadVillageLocations(){
                     getDocs
                 } = await import(
                     "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js"
-                );
+                ).then(module=>window.GreenGuardReadDiagnostics?.wrap(module)||module);
 
 
                 const db =
@@ -82160,6 +81893,7 @@ window.loadLatestPatrolPointFast = function(sessionId, staff){
       // Do not order by a possibly absent legacy field: timestamp-only points must reach the cache.
       // Ordering is performed from normalized capture time, without extra queries/listeners.
       const pointsRef = collFb(window.db, "patrol_tracks", sessionId, "points");
+      window.GreenGuardReadDiagnostics?.label(pointsRef,'patrol-shared-fallback');
 
       // ------------------------------------------------------
       // 🔥 THE ONE AND ONLY PATROL POINT onSnapshot OWNER
@@ -83411,6 +83145,7 @@ function(s, currentSessionId, newPoints){
   // ==========================================
   if (window.userProfile) window.StaffStartupDiagnostics?.mark('T2');
   window.StaffStartupDiagnostics?.mark('T3');
+  window.GreenGuardReadDiagnostics?.label(liveRef,'live-staff-central');
   window.staffUnsubscribe = window.FirestoreRecovery.listenStaff(
     liveRef,
     async function processLiveStaff(snapshot){
@@ -120292,6 +120027,7 @@ async function dutyReadEndedPoints(job, attempt = null) {
   for (let pass=reuse?1:0;pass<2;pass++) {
     if (pass) await new Promise(resolve=>setTimeout(resolve,5000));
     const query=window.fb.query(ref,window.fb.orderBy('time','asc'));
+    window.GreenGuardReadDiagnostics?.label(query,'reporting-gps-verification');
     if (typeof window.fb.getDocsFromServer!=='function') throw Error('Server-only point read unavailable');
     const snapshot=await dutyDeadline(window.fb.getDocsFromServer(query));
     latest={};snapshot.forEach(doc=>{latest[doc.id]=doc.data();});
@@ -132360,352 +132096,9 @@ function handleDutyAction(e){
 // ============================================================
 
 async function cleanupOldTracks(){
-
-    try{
-
-        // ========================================================
-        // FIREBASE READY CHECK
-        // ========================================================
-
-        if(
-            !window.db ||
-            !window.fb
-        ){
-
-            console.warn(
-                "⚠ Firebase not ready for patrol cleanup"
-            );
-
-            return;
-
-        }
-
-
-        // ========================================================
-        // REQUIRED FIRESTORE FUNCTIONS
-        // ========================================================
-
-        const {
-            collection,
-            query,
-            where,
-            getDocs,
-            writeBatch
-        } =
-            window.fb;
-
-
-        if(
-            typeof collection !==
-                "function" ||
-
-            typeof query !==
-                "function" ||
-
-            typeof where !==
-                "function" ||
-
-            typeof getDocs !==
-                "function"
-        ){
-
-            console.warn(
-                "⚠ Required Firestore cleanup functions unavailable"
-            );
-
-            return;
-
-        }
-
-
-        // ========================================================
-        // RETENTION
-        // ========================================================
-
-        const RETENTION_MS =
-            60 *
-            24 *
-            60 *
-            60 *
-            1000;
-
-
-        const cutoff =
-            Date.now() -
-            RETENTION_MS;
-
-
-        console.log(
-            "🧹 Patrol cleanup starting:",
-            {
-                cutoff:
-                    new Date(
-                        cutoff
-                    ).toISOString()
-            }
-        );
-
-
-        // ========================================================
-        // QUERY ONLY OLD SESSION DOCUMENTS
-        // ========================================================
-
-        const tracksRef =
-            collection(
-                window.db,
-                "patrol_tracks"
-            );
-
-
-        const oldTracksQuery =
-            query(
-
-                tracksRef,
-
-                where(
-                    "startedAt",
-                    "<",
-                    cutoff
-                )
-
-            );
-
-
-        // ========================================================
-        // ONE TARGETED READ
-        // ========================================================
-
-        const snapshot =
-            await getDocs(
-                oldTracksQuery
-            );
-
-
-        if(
-            snapshot.empty
-        ){
-
-            console.log(
-                "🧹 Patrol cleanup: no old sessions found"
-            );
-
-            return;
-
-        }
-
-
-        console.log(
-            "🧹 Patrol cleanup candidates:",
-            snapshot.size
-        );
-
-
-        // ========================================================
-        // FIRESTORE BATCH LIMIT
-        // --------------------------------------------------------
-        // Firestore batches support up to 500 writes.
-        //
-        // Use 450 to leave a safety margin.
-        // ========================================================
-
-        const BATCH_LIMIT =
-            450;
-
-
-        let deleted =
-            0;
-
-
-        let batch =
-            null;
-
-
-        let batchCount =
-            0;
-
-
-        for(
-            const docSnap of
-            snapshot.docs
-        ){
-
-            // ====================================================
-            // CREATE BATCH
-            // ====================================================
-
-            if(
-                !batch
-            ){
-
-                batch =
-                    typeof writeBatch ===
-                        "function"
-
-                        ? writeBatch(
-                            window.db
-                        )
-
-                        : null;
-
-                batchCount =
-                    0;
-
-            }
-
-
-            // ====================================================
-            // FALLBACK IF writeBatch IS UNAVAILABLE
-            // ----------------------------------------------------
-            // This should not normally occur, but preserving a
-            // safe fallback avoids breaking cleanup.
-            // ====================================================
-
-            if(
-                !batch
-            ){
-
-                try{
-
-                    if(
-                        typeof window.fb.deleteDoc ===
-                            "function"
-                    ){
-
-                        await window.fb.deleteDoc(
-                            docSnap.ref
-                        );
-
-                        deleted++;
-
-                    }
-
-                }
-                catch(deleteErr){
-
-                    console.warn(
-                        "⚠ Failed deleting old patrol track:",
-                        docSnap.id,
-                        deleteErr
-                    );
-
-                }
-
-                continue;
-
-            }
-
-
-            // ====================================================
-            // ADD DELETE TO BATCH
-            // ====================================================
-
-            batch.delete(
-                docSnap.ref
-            );
-
-
-            batchCount++;
-
-
-            // ====================================================
-            // COMMIT FULL BATCH
-            // ====================================================
-
-            if(
-                batchCount >=
-                BATCH_LIMIT
-            ){
-
-                try{
-
-                    await batch.commit();
-
-                    deleted +=
-                        batchCount;
-
-
-                    console.log(
-                        "🗑 Patrol cleanup batch committed:",
-                        batchCount
-                    );
-
-                }
-                catch(batchErr){
-
-                    console.error(
-                        "❌ Patrol cleanup batch failed:",
-                        batchErr
-                    );
-
-                }
-
-
-                batch =
-                    null;
-
-                batchCount =
-                    0;
-
-            }
-
-        }
-
-
-        // ========================================================
-        // COMMIT FINAL PARTIAL BATCH
-        // ========================================================
-
-        if(
-            batch &&
-            batchCount > 0
-        ){
-
-            try{
-
-                await batch.commit();
-
-                deleted +=
-                    batchCount;
-
-
-                console.log(
-                    "🗑 Patrol cleanup final batch committed:",
-                    batchCount
-                );
-
-            }
-            catch(finalBatchErr){
-
-                console.error(
-                    "❌ Patrol cleanup final batch failed:",
-                    finalBatchErr
-                );
-
-            }
-
-        }
-
-
-        console.log(
-            "✅ Patrol cleanup complete:",
-            {
-                candidates:
-                    snapshot.size,
-
-                deleted
-            }
-        );
-
-    }
-    catch(err){
-
-        console.error(
-            "❌ cleanupOldTracks failed:",
-            err
-        );
-
-    }
-
+  // A browser session must never scan/delete patrol history automatically.
+  // Any future retention operation requires a separately approved administrative workflow.
+  return {performed:false,reason:'Automatic client patrol-history cleanup disabled'};
 }
 // ===========================================================
 // ANDROID LOCATION PERMISSION PROMISE
