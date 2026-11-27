@@ -38,7 +38,7 @@
         record(id, {...initial, ...values});
     }
     function eligible() {
-        return Object.values(w.visibleStaffCache || {}).filter(s => s?.dutyActive === true && String(s.sessionId || '').trim());
+        return Object.values(w.visibleStaffCache || {}).filter(s => s?.dutyActive === true && s.status !== 'ENDED' && String(s.sessionId || '').trim());
     }
     function visibleFrames() {
         if (!diagnostic || !w.requestAnimationFrame) return;
@@ -144,7 +144,7 @@
         const s = w.patrolSessionStaff?.[id];
         if(s && w.confirmedEndedDutySessions?.get(String(key(s)).trim().toUpperCase())?.has(id))return null;
         const current = s && w.visibleStaffCache?.[key(s)];
-        return current?.dutyActive === true && String(current.sessionId || '').trim() === id ? current : null;
+        return current?.dutyActive === true && current.status !== 'ENDED' && String(current.sessionId || '').trim() === id ? current : null;
     }
     function ungroup(id) {
         const old = sessions.get(id);
@@ -215,7 +215,7 @@
         const required = new Set();
         for (const s of Object.values(w.visibleStaffCache || {})) {
             const id = String(s?.sessionId || '').trim();
-            if (!id || s.dutyActive !== true) continue;
+            if (!id || s.dutyActive !== true || s.status === 'ENDED') continue;
             required.add(id); latest(id);
         }
         for (const id of sessions.keys()) if (!required.has(id)) ungroup(id);
@@ -264,7 +264,7 @@
     function current(marker) {
         const s = w.visibleStaffCache?.[marker.__staffKey];
         const id = String(s?.sessionId || '').trim();
-        if (!s || !mayShowStaff(s) || s.dutyActive !== true || !id || id !== marker.__staffSession) return null;
+        if (!s || !mayShowStaff(s) || s.dutyActive !== true || s.status === 'ENDED' || !id || id !== marker.__staffSession) return null;
         const p = latest(id);
         return p ? {s, p, id} : null;
     }
@@ -330,7 +330,7 @@
     }
     function refresh(marker) {window.BTRMarkerDiagnostics?.hit('renderer',marker,{});
         const currentStaff = w.visibleStaffCache?.[marker.__staffKey];
-        if(currentStaff && !mayShowStaff(currentStaff)) {
+        if(currentStaff && (!mayShowStaff(currentStaff) || currentStaff.status === 'ENDED')) {
             hideRestrictedMarker(marker.__staffKey);
             return;
         }
@@ -366,6 +366,10 @@
     function ensure(s, p, id, lat, lon, builder) {
         const began = diagnostic ? now() : 0;
         const name = key(s), authorized = w.visibleStaffCache?.[name];
+        if(authorized?.status === 'ENDED') {
+            hideRestrictedMarker(name);
+            return {marker: null, icon: null, popup: ''};
+        }
         if (authorized && !mayShowStaff(authorized)) {
             hideRestrictedMarker(name);
             return {marker: null, icon: null, popup: ''};

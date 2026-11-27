@@ -81889,11 +81889,11 @@ window.getLiveStaffPointForSession = function(id){
   id=String(id||'').trim();
   const name=cleanName(window.patrolSessionStaff?.[id]?.cleanName||window.patrolSessionStaff?.[id]?.name||'');
   const staff=window.visibleStaffCache?.[name],point=staff?.__liveGpsPoint;
-  return staff?.dutyActive===true && String(staff.sessionId||'').trim()===id && point?.sessionId===id ? point : null;
+  return staff?.dutyActive===true && staff.status!=='ENDED' && String(staff.sessionId||'').trim()===id && point?.sessionId===id ? point : null;
 };
 window.applyLiveStaffGps = function(raw,key){window.BTRMarkerDiagnostics?.hit('gpsInput',key,{});
   const staff=window.visibleStaffCache?.[key],id=String(staff?.sessionId||'').trim();
-  if(!staff || staff.dutyActive!==true || raw?.dutyActive===false || !id || String(raw?.sessionId||'').trim()!==id){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'OWNERSHIP'});return false;}
+  if(!staff || staff.dutyActive!==true || staff.status==='ENDED' || raw?.dutyActive===false || raw?.status==='ENDED' || !id || String(raw?.sessionId||'').trim()!==id){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'OWNERSHIP'});return false;}
   if(raw.lat==null || raw.lon==null || raw.lat==='' || raw.lon===''){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'MISSING_COORDINATES'});return false;}
   const lat=Number(raw.lat),lon=Number(raw.lon);
   if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180||(lat===0&&lon===0)){window.BTRMarkerDiagnostics?.hit('gpsReject',key,{reason:'INVALID_COORDINATES'});return false;}
@@ -84699,7 +84699,13 @@ function(staff, point, originatingSessionId){
         // Marker/popup is ONLY for dutyActive === true.
         // ========================================================
 
-        if(staff.dutyActive !== true){
+        // Reject obsolete-session callbacks before any marker removal or update.
+        const currentMarkerOwner = window.visibleStaffCache?.[staffName];
+        const markerOriginId = String(originatingSessionId || point?.sessionId || staff.sessionId || '').trim();
+        if(currentMarkerOwner?.dutyActive === true && (!markerOriginId ||
+           String(currentMarkerOwner.sessionId || '').trim() !== markerOriginId))return;
+
+        if(staff.dutyActive !== true || staff.status === 'ENDED'){
 
             const oldMarker =
                 window.staffMarkers?.[staffName];
@@ -84770,7 +84776,7 @@ function(staff, point, originatingSessionId){
         }
 
 
-        if(visibleStaff.dutyActive !== true){
+        if(visibleStaff.dutyActive !== true || visibleStaff.status === 'ENDED'){
 
             const oldMarker =
                 window.staffMarkers?.[staffName];
@@ -119163,6 +119169,9 @@ async function readAuthoritativeLiveStaffDistance(
             return null;
         }
 
+
+        // Reuse this already-completed read as optional delivery evidence; never poll.
+        window.FirestoreRecovery?.observeServerStaffSnapshot?.(snap);
 
         let distanceKm =
             Number(
