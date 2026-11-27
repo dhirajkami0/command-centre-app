@@ -30260,6 +30260,15 @@ async function loadMonthlyAnalyticsRealtimeCache(
 async function startMonthlyAnalyticsRealtime(
     monthKey
 ){
+    // One owned startup across the awaited IDB load; do not attach duplicates.
+    if(window.__ggMonthlyAnalyticsStartup){
+        await window.__ggMonthlyAnalyticsStartup;
+        return startMonthlyAnalyticsRealtime(monthKey);
+    }
+    let finishMonthlyStartup;
+    const ownedMonthlyStartup=new Promise(resolve=>{finishMonthlyStartup=resolve;});
+    window.__ggMonthlyAnalyticsStartup=ownedMonthlyStartup;
+    try {
 
     try{
 
@@ -30519,6 +30528,11 @@ async function startMonthlyAnalyticsRealtime(
 
     }
 
+
+    } finally {
+        if(window.__ggMonthlyAnalyticsStartup===ownedMonthlyStartup)delete window.__ggMonthlyAnalyticsStartup;
+        finishMonthlyStartup();
+    }
 }
 
 /* ================================================================
@@ -120436,17 +120450,26 @@ async function dutyProcessReport(sessionId) {
 }
 async function dutyResumeReports() {
   if (dutyReportingOffline() || !window.db || !window.fb?.where || !window.userProfile?.cleanName || window.dutyReportDiscovery) return;
+  const reportDiscoveryDb=window.db, reportDiscoveryStaff=window.userProfile.cleanName;
   window.dutyReportDiscovery=true;
   try {
-    const ref=window.fb.collection(window.db,'patrol_tracks');
-    const rows=await dutyDeadline(window.fb.getDocs(window.fb.query(ref,window.fb.where('cleanName','==',window.userProfile.cleanName))));
+    const ref=window.fb.collection(reportDiscoveryDb,'patrol_tracks');
+    const request=window.fb.getDocs(window.fb.query(ref,window.fb.where('cleanName','==',reportDiscoveryStaff)));
+    let rows;
+    try {rows=await dutyDeadline(request);} catch(error) {
+      if(error?.message!=='Operation timed out; acknowledgement unverified')throw error;
+      // An advisory deadline cannot cancel the SDK request. Retain ownership so
+      // a later timer/event cannot start a duplicate full-history read.
+      rows=await request;
+    }
+    if(window.db!==reportDiscoveryDb || window.userProfile?.cleanName!==reportDiscoveryStaff)return;
     rows.forEach(doc => {const p=doc.data();if (p.endDutyReportJob?.version===1 && p.status==='ENDED' && p.endDutyReportJob.state!=='COMPLETE')
       void dutyProcessReport(doc.id);});
   } catch(error) {console.warn('Report recovery unavailable; will retry',error.message);}
   finally {window.dutyReportDiscovery=false;}
 }
 if (!window.dutyReportRecoveryTimer) {
-  window.dutyReportRecoveryTimer=setInterval(()=>void dutyResumeReports(),30000);
+  window.dutyReportRecoveryTimer=setInterval(()=>void dutyResumeReports(),900000);
   window.addEventListener('online',()=>void dutyResumeReports());
   window.addEventListener('pageshow',()=>void dutyResumeReports());
   window.addEventListener('popstate',()=>void dutyResumeReports());
