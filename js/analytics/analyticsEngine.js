@@ -876,7 +876,19 @@ AnalyticsEngine.load = async function () {
 
     }
 
-};    AnalyticsEngine.buildMaster = function () {
+};
+    // Share the actual load promise, including its rejection, until all SDK work settles.
+    const loadDataset = AnalyticsEngine.load;
+    let datasetFlight = null, refreshFlight = null;
+    AnalyticsEngine.load = function () {
+        if (datasetFlight) return datasetFlight;
+        const owned = Promise.resolve().then(() => loadDataset()).finally(() => {
+            if (datasetFlight === owned) datasetFlight = null;
+        });
+        datasetFlight = owned;
+        return owned;
+    };
+    AnalyticsEngine.buildMaster = function () {
         const dataset = [];
         const datasetMap = {};
         const masterGrid = window.masterGrid || {};
@@ -954,9 +966,23 @@ AnalyticsEngine.load = async function () {
         try {
             const monthKey = `${new Date().getFullYear()}_${String(new Date().getMonth() + 1).padStart(2, "0")}`;
             const gridIds = Object.keys(datasetMap);
+            const monthly=window.monthlyAnalyticsRealtime;
+            // Analytics presentation only: a recent immutable server snapshot may be reused.
+            // Cache absence, IDB data, pending writes and old/inactive listeners are not proof.
+            const recent=monthly?.started===true && monthly.initialLoaded===true &&
+                monthly.monthKey===monthKey && monthly.db===window.db &&
+                monthly.serverSnapshot?.metadata?.fromCache===false &&
+                monthly.serverSnapshot?.metadata?.hasPendingWrites===false &&
+                Date.now()>=monthly.serverSnapshotAt && Date.now()-monthly.serverSnapshotAt<=30000 &&
+                AnalyticsEngine.requireFreshAnalytics!==true;
+            const cached=recent ? new Map(monthly.serverSnapshot.docs.map(doc=>[doc.id,doc])) : null;
             for (let i = 0; i < gridIds.length; i += 40) {
                 const batch = gridIds.slice(i, i + 40);
-                const snaps = await Promise.allSettled(batch.map(id => window.fb.getDoc(window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", id))));
+                const useCache=cached && window.monthlyAnalyticsRealtime===monthly && monthly.db===window.db && monthly.started &&
+                    Date.now()>=monthly.serverSnapshotAt && Date.now()-monthly.serverSnapshotAt<=30000;
+                const snaps = await Promise.allSettled(batch.map(id => useCache ?
+                    Promise.resolve(cached.get(id)||{exists:()=>false}) :
+                    window.fb.getDoc(window.fb.doc(window.db, "analytics_rebuild", monthKey, "compartments", id))));
                 snaps.forEach((res, idx) => {
                     if (res.status === "fulfilled" && res.value.exists()) {
                         const row = datasetMap[batch[idx]];
@@ -3297,12 +3323,18 @@ AnalyticsEngine.routeIntent = function (
  REFRESH
 =========================================================*/
 
-AnalyticsEngine.refresh = async function () {
-
-    AnalyticsEngine.clear();
-
-    return await AnalyticsEngine.load();
-
-};   
+AnalyticsEngine.refresh = function () {
+    if (refreshFlight) return refreshFlight;
+    const owned=Promise.resolve().then(async()=>{
+        // Refresh must not clear indexes underneath an already-running build.
+        if(datasetFlight){try{await datasetFlight;}catch(_){/* Explicit refresh can recover a failed load. */}}
+        AnalyticsEngine.clear();
+        AnalyticsEngine.requireFreshAnalytics=true;
+        try{return await AnalyticsEngine.load();}
+        finally{AnalyticsEngine.requireFreshAnalytics=false;}
+    }).finally(()=>{if(refreshFlight===owned)refreshFlight=null;});
+    refreshFlight=owned;
+    return owned;
+};
     window.GreenGuardAI.AnalyticsEngine = AnalyticsEngine;
 })(window);

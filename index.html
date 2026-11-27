@@ -30336,6 +30336,14 @@ async function startMonthlyAnalyticsRealtime(
 
         };
 
+        const monthlyOwner=window.monthlyAnalyticsRealtime;
+        // SDK handles are memory-only and must never enter JSON/IndexedDB payloads.
+        Object.defineProperties(monthlyOwner,{
+            db:{value:window.db},
+            serverSnapshot:{value:null,writable:true},
+            serverSnapshotAt:{value:0,writable:true}
+        });
+
 
         // ========================================================
         // LOAD PERSISTENT DOCUMENT CACHE FIRST
@@ -30345,6 +30353,8 @@ async function startMonthlyAnalyticsRealtime(
             await loadMonthlyAnalyticsRealtimeCache(
                 monthKey
             );
+
+        if(window.monthlyAnalyticsRealtime!==monthlyOwner || window.db!==monthlyOwner.db)return;
 
 
         if(
@@ -30391,6 +30401,11 @@ async function startMonthlyAnalyticsRealtime(
                 async snapshot => {
 
                     try{
+
+                        if(window.monthlyAnalyticsRealtime!==monthlyOwner || window.db!==monthlyOwner.db)return;
+                        monthlyOwner.serverSnapshot=snapshot.metadata?.fromCache===false &&
+                            snapshot.metadata?.hasPendingWrites===false ? snapshot : null;
+                        monthlyOwner.serverSnapshotAt=monthlyOwner.serverSnapshot ? Date.now() : 0;
 
                         const changes =
                             snapshot.docChanges();
@@ -30459,6 +30474,8 @@ async function startMonthlyAnalyticsRealtime(
                         await
                             saveMonthlyAnalyticsRealtimeCache();
 
+                        if(window.monthlyAnalyticsRealtime!==monthlyOwner || window.db!==monthlyOwner.db)return;
+
 
                         window.monthlyAnalyticsRealtime
                             .initialLoaded =
@@ -30471,6 +30488,7 @@ async function startMonthlyAnalyticsRealtime(
 
                         await
                             updateMonthlyStatusFromRealtimeAnalytics();
+                        if(window.monthlyAnalyticsRealtime!==monthlyOwner || window.db!==monthlyOwner.db)return;
                         window.StartupCoordinator?.monthly(snapshot.metadata?.fromCache === true ? "Cached" : "Live");
 
                     }
@@ -30487,6 +30505,10 @@ async function startMonthlyAnalyticsRealtime(
                 },
 
                 error => {
+
+                    if(window.monthlyAnalyticsRealtime!==monthlyOwner || window.db!==monthlyOwner.db)return;
+                    monthlyOwner.serverSnapshot=null;
+                    monthlyOwner.serverSnapshotAt=0;
 
                     console.error(
                         "❌ Monthly analytics realtime listener failed:",
