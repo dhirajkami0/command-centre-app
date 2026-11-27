@@ -83427,6 +83427,7 @@ function(s, currentSessionId, newPoints){
           const docSnap = change.doc;
           const changeType = change.type;
           const s = docSnap.data();
+          dutyObserveInitialReportStaff(docSnap.id,s);
 
           if(!s){
             return;
@@ -120084,6 +120085,7 @@ async function closeEndDutySession(context) {
   if (!staffId || staffId.includes('/') || !sessionId || sessionId.includes('/') ||
       !Number.isSafeInteger(endAtMs) || endAtMs <= 0) throw new Error('Invalid ending session context');
   if (!window.db || typeof window.fb?.runTransaction !== 'function') throw new Error('Firestore is not ready');
+  dutyRememberInitialReport(sessionId);
   const liveRef = window.fb.doc(window.db, 'live_staff', staffId);
   const trackRef = window.fb.doc(window.db, 'patrol_tracks', sessionId);
   return dutyMeasure('end.transaction',()=>window.fb.runTransaction(window.db, async transaction => {
@@ -120124,7 +120126,7 @@ async function closeEndDutySession(context) {
         analyticsCacheRequired:context.analyticsCacheRequired===true,
         expectedPointCount:telemetry.patrolPointCount ?? 0,
         distanceKm:telemetry.distanceCoveredKm ?? (telemetry.distanceCoveredMeters == null ? null : telemetry.distanceCoveredMeters/1000),
-        state:'PENDING',attempts:0,nextAttemptAt:0,leaseUntil:0}
+        state:'PENDING',attempts:0,automaticAttemptsUsed:0,automaticReportPolicy:'INITIAL_ONLY_V1',nextAttemptAt:0,leaseUntil:0}
     });
     transaction.update(liveRef, {
       dutyActive:false, status:'ENDED', sessionId:'', lastEndedSessionId:sessionId,
@@ -120226,9 +120228,9 @@ function dutyNotifyReport(job, stage, message) {
   if (!notice) {try {notice=JSON.parse(localStorage.getItem(key) || 'null');} catch (_) {}}
   if (!notice || !Array.isArray(notice.stages)) notice={stages:[],failure:null};
   const failure=JSON.stringify((job.failures || []).map(error=>String(error?.message || error)));
-  const repeated=stage==='RETRY_REQUIRED' ? notice.failure===failure : notice.stages.includes(stage);
+  const repeated=(stage==='RETRY_REQUIRED'||stage==='MANUAL_REQUIRED') ? notice.failure===failure : notice.stages.includes(stage);
   if (repeated) return;
-  if (stage==='RETRY_REQUIRED') notice.failure=failure;
+  if ((stage==='RETRY_REQUIRED'||stage==='MANUAL_REQUIRED')) notice.failure=failure;
   else notice.stages.push(stage);
   window.dutyReportNotices[job.sessionId]=notice;
   try {localStorage.setItem(key,JSON.stringify(notice));} catch (_) { /* Tab-local fallback. */ }
@@ -120252,24 +120254,26 @@ async function dutySaveJob(job, token = null) {
     if (serializable.analyticsBuffer) {serializable.analyticsPayload=JSON.stringify(serializable.analyticsBuffer);delete serializable.analyticsBuffer;}
     tx.update(ref,{endDutyReportJob:serializable,endDutyReportingState:job.state});
   });
-  const stage=job.state==='RETRY_REQUIRED' ? 'RETRY_REQUIRED' : job.registerAck ? 'SHEET_VERIFIED' :
+  const stage=job.state==='MANUAL_REQUIRED' ? 'MANUAL_REQUIRED' : job.registerAck ? 'SHEET_VERIFIED' :
     (!job.routeOutcome || job.routeOutcome==='ROUTE') && !job.kmlUrl ? 'KML_PENDING' : 'SHEET_PENDING';
   recordEndDutyReportState({sessionId:job.sessionId,staffId:job.staffId,endAtMs:job.endedAt},job.state,job.failures || [],stage);
   dutyNotifyReport(job,stage,({KML_PENDING:'Duty ended. KML generation/upload pending: ',
     SHEET_PENDING:'Duty ended. Google Sheet registration pending: ',
-    SHEET_VERIFIED:'Google Sheet registration verified: ',RETRY_REQUIRED:'Duty ended. Reporting requires retry: '})[stage]+job.sessionId);
+    SHEET_VERIFIED:'Google Sheet registration verified: ',MANUAL_REQUIRED:'Duty ended. Reporting requires authorized manual recovery: '})[stage]+job.sessionId);
 }
 async function dutyClaimJob(sessionId) {
   if (dutyReportingOffline()) return null;
-  const ref = window.fb.doc(window.db,'patrol_tracks',sessionId);
-  const token = crypto.randomUUID();
-  return window.fb.runTransaction(window.db, async tx => {
-    const snap = await tx.get(ref), p = snap.data(), job = p?.endDutyReportJob;
-    if (!job || job.version !== 1 || p.status !== 'ENDED' || p.dutyActive !== false ||
-        p.cleanName !== window.userProfile?.cleanName || job.staffId !== p.cleanName ||
-        job.sessionId !== sessionId || job.endedAt !== p.endedAt || job.state === 'COMPLETE') return null;
-    if ((job.leaseUntil || 0) > Date.now() || (job.nextAttemptAt || 0) > Date.now()) return null;
-    const claimed = {...job,state:'PROCESSING',leaseToken:token,leaseUntil:Date.now()+120000,failures:[]};
+  const db=window.db,staff=window.userProfile?.cleanName;
+  const ref=window.fb.doc(db,'patrol_tracks',sessionId),token=crypto.randomUUID();
+  return window.fb.runTransaction(db,async tx=>{
+    const snap=await tx.get(ref),p=snap.data(),job=p?.endDutyReportJob;
+    if(window.db!==db || window.userProfile?.cleanName!==staff || !snap.exists() ||
+       !job || job.version!==1 || p.status!=='ENDED' || p.dutyActive!==false ||
+       p.cleanName!==staff || job.staffId!==staff || job.sessionId!==sessionId ||
+       job.startedAt!==p.startedAt || job.endedAt!==p.endedAt || !dutyInitialReportEligible(job))return null;
+    const claimed={...job,state:'PROCESSING',attempts:1,automaticAttemptsUsed:1,
+      automaticReportPolicy:'INITIAL_ONLY_V1',automaticAttemptStartedAt:Date.now(),
+      leaseToken:token,leaseUntil:Date.now()+120000,nextAttemptAt:0};
     tx.update(ref,{endDutyReportJob:claimed,endDutyReportingState:'PROCESSING'});
     return claimed;
   });
@@ -120347,15 +120351,18 @@ async function dutyRegister(job) {
   } finally { clearTimeout(timer); }
 }
 async function dutyProcessReport(sessionId) {
+  dutyRememberInitialReport(sessionId);
   if (dutyReportingOffline()) return;
   window.dutyReportFlights ||= new Map();
   if (window.dutyReportFlights.has(sessionId)) return window.dutyReportFlights.get(sessionId);
+  let reportClaimSettled=false;
   const flight = (async () => {
     let job;
     let pointReads;
     try {
       job = await dutyClaimJob(sessionId);
-      if (!job) return;
+      reportClaimSettled=true;
+      if (!job) {dutyRememberInitialReport(sessionId,true);return;}
       pointReads={job,db:window.db,staff:window.userProfile?.cleanName,key:JSON.stringify([job.staffId,job.sessionId,job.startedAt,job.endedAt,job.leaseToken]),latest:null};
       const save = async () => {job.leaseUntil=Date.now()+120000;await dutySaveJob(job,job.leaseToken);};
       // Optional analytics is serialized after authoritative closure, never in it.
@@ -120467,47 +120474,126 @@ async function dutyProcessReport(sessionId) {
         try {await dutySaveJob(job,job.leaseToken);} catch(error) {console.warn('Optional notification checkpoint unavailable',error);}
       }
     } catch(error) {
-      console.error('Session report retry required',sessionId,error);
+      console.error('Session report manual recovery required',sessionId,error);
       if (job) {
-        job.state='RETRY_REQUIRED';job.failures=[String(error.message || error)];job.attempts=(job.attempts || 0)+1;
-        job.leaseUntil=0;job.nextAttemptAt=Date.now()+Math.min(300000,5000*2**Math.min(job.attempts,6));
+        job.state='MANUAL_REQUIRED';job.failures=[...(job.failures||[]),String(error.message || error)];
+        job.leaseUntil=0;job.nextAttemptAt=0;
         try {await dutySaveJob(job,job.leaseToken);} catch(saveError) {console.error('Report lease/checkpoint unverified',saveError);}
-        dutyNotifyReport(job,'RETRY_REQUIRED','Duty remains ended. Report pending retry: '+sessionId);
+        dutyNotifyReport(job,'MANUAL_REQUIRED','Duty remains ended. Report requires authorized manual recovery: '+sessionId);
+      } else {
+        // A failed/uncertain reservation is not proof that an initial attempt ran.
+        // Retain the exact reference; a later connection event checks durable state.
+        recordEndDutyReportState({sessionId,staffId:window.userProfile?.cleanName,endAtMs:null},
+          'INITIAL_OUTCOME_UNVERIFIED',[String(error.message||error)],'MANUAL_REVIEW');
       }
     }
   })();
   window.dutyReportFlights.set(sessionId,flight);
-  try {return await flight;} finally {window.dutyReportFlights.delete(sessionId);}
+  try {return await flight;} finally {window.dutyReportFlights.delete(sessionId);if(reportClaimSettled)dutyRememberInitialReport(sessionId,true);}
+}
+// One initial attempt. Failure/uncertain completion is durable manual recovery, never an automatic retry.
+function dutyInitialReportEligible(job) {
+  return job?.state==='PENDING' && job.attempts===0 &&
+    (job.automaticAttemptsUsed==null || job.automaticAttemptsUsed===0) &&
+    !job.automaticAttemptStartedAt && !job.leaseToken && !job.leaseUntil && !job.nextAttemptAt &&
+    !job.snapshot && !job.kmlUrl && !job.registerAck && !job.historyDone && !job.distanceDone && !job.analyticsDone;
+}
+function dutyInitialReportOwner() {
+  const staff=window.userProfile?.cleanName;
+  if(!staff || staff.includes('/') || !window.db)return null;
+  let owner=window.dutyInitialReports;
+  if(!owner || owner.staff!==staff || owner.db!==window.db){
+    owner=window.dutyInitialReports={staff,db:window.db,ids:new Set(),observed:new Set(),active:null,flight:null,bootstrap:'idle'};
+    try {for(const id of JSON.parse(localStorage.getItem('initialDutyReports:'+staff)||'[]'))
+      if(typeof id==='string' && id && !id.includes('/'))owner.ids.add(id);}catch(_){}
+    try {const c=JSON.parse(localStorage.getItem('endDutyClosureRequest:'+staff)||'null');if(c?.staffId===staff&&c.sessionId&&!c.sessionId.includes('/'))owner.ids.add(c.sessionId);}catch(_){}
+  }
+  return owner;
+}
+function dutyRememberInitialReport(id,remove=false) {
+  const owner=dutyInitialReportOwner();if(!owner || typeof id!=='string' || !id || id.includes('/'))return;
+  if(remove)owner.ids.delete(id);else owner.ids.add(id);
+  try {localStorage.setItem('initialDutyReports:'+owner.staff,JSON.stringify([...owner.ids]));}catch(_){/* Bootstrap query remains available if local persistence is denied. */}
+}
+async function dutyRecoverExactInitialReport(id,owner=dutyInitialReportOwner()) {
+  if(!owner || owner!==window.dutyInitialReports || dutyReportingOffline())return;
+  const current=()=>owner===window.dutyInitialReports&&owner.db===window.db&&owner.staff===window.userProfile?.cleanName;
+  if(!current())return;
+  const ref=window.fb.doc(owner.db,'patrol_tracks',id);
+  const eligible=await window.fb.runTransaction(owner.db,async tx=>{
+    const snap=await tx.get(ref),p=snap.data();
+    if(!current() || !snap.exists())return null;
+    if(p.cleanName!==owner.staff || p.sessionId!==id)return false;
+    if(p.dutyActive!==false || p.status!=='ENDED')return null;
+    if(p.endDutyReportJob)return dutyInitialReportEligible(p.endDutyReportJob);
+    // Never adopt historical administrative/no-job sessions, invent analytics, or rewrite lifecycle fields.
+    if(!Number.isSafeInteger(p.startedAt)||!Number.isSafeInteger(p.endedAt)||p.startedAt<=0||
+       p.endedAt<p.startedAt||p.endedAt<1795780776771)return false;
+    const liveSnap=await tx.get(window.fb.doc(owner.db,'live_staff',owner.staff)),live=liveSnap.data();
+    if(!liveSnap.exists() || live.cleanName&&live.cleanName!==owner.staff ||
+       !(live.lastEndedSessionId===id || live.dutyActive===false&&!live.sessionId&&owner.active===id))return false;
+    const job={version:1,sessionId:id,staffId:owner.staff,startedAt:p.startedAt,endedAt:p.endedAt,
+      identity:Object.fromEntries(['cleanName','name','phone','division','range','beat','role','team','teamType','dutyType','compartments'].filter(k=>p[k]!=null).map(k=>[k,p[k]])),
+      observations:p.observations||'',analyticsPending:true,analyticsCacheRequired:false,
+      expectedPointCount:p.pointCount??p.patrolPointCount??0,
+      state:'PENDING',attempts:0,automaticAttemptsUsed:0,automaticReportPolicy:'INITIAL_ONLY_V1',nextAttemptAt:0,leaseUntil:0};
+    tx.update(ref,{endDutyReportJob:job,endDutyReportingState:'PENDING'});return true;
+  });
+  if(!current())return;
+  if(eligible)await dutyProcessReport(id);
+  else if(eligible===false)dutyRememberInitialReport(id,true);
+}
+function dutyObserveInitialReportStaff(id,data) {
+  try {
+    const owner=dutyInitialReportOwner();if(!owner || id!==owner.staff || !data)return;
+    if(owner.bootstrap==='idle'&&!owner.flight)void dutyResumeReports();
+    if(data.dutyActive===true && typeof data.sessionId==='string' && data.sessionId){owner.active=data.sessionId;return;}
+    if(data.dutyActive!==false)return;
+    const sessionId=data.lastEndedSessionId||owner.active;
+    if(typeof sessionId!=='string'||!sessionId||sessionId.includes('/')||owner.observed.has(sessionId))return;
+    owner.observed.add(sessionId);dutyRememberInitialReport(sessionId);
+    void dutyResumeReports();
+  }catch(error){console.warn('Exact initial reporting observation unavailable',error.message);}
 }
 async function dutyResumeReports() {
-  if (dutyReportingOffline() || !window.db || !window.fb?.where || !window.userProfile?.cleanName || window.dutyReportDiscovery) return;
-  const reportDiscoveryDb=window.db, reportDiscoveryStaff=window.userProfile.cleanName;
-  window.dutyReportDiscovery=true;
-  try {
-    const ref=window.fb.collection(reportDiscoveryDb,'patrol_tracks');
-    const request=window.fb.getDocs(window.fb.query(ref,window.fb.where('cleanName','==',reportDiscoveryStaff)));
-    let rows;
-    try {rows=await dutyDeadline(request);} catch(error) {
-      if(error?.message!=='Operation timed out; acknowledgement unverified')throw error;
-      // An advisory deadline cannot cancel the SDK request. Retain ownership so
-      // a later timer/event cannot start a duplicate full-history read.
-      rows=await request;
-    }
-    if(window.db!==reportDiscoveryDb || window.userProfile?.cleanName!==reportDiscoveryStaff)return;
-    rows.forEach(doc => {const p=doc.data();if (p.endDutyReportJob?.version===1 && p.status==='ENDED' && p.endDutyReportJob.state!=='COMPLETE')
-      void dutyProcessReport(doc.id);});
-  } catch(error) {console.warn('Report recovery unavailable; will retry',error.message);}
-  finally {window.dutyReportDiscovery=false;}
+  if(dutyReportingOffline())return;
+  const owner=dutyInitialReportOwner();if(!owner)return;
+  if(owner.flight)return owner.flight;
+  const work=(async()=>{
+    try {
+      // One bounded indexed bootstrap per loaded profile/database, NOT a recurring history scan.
+      if(owner.bootstrap==='idle'){
+        owner.bootstrap='pending';
+        const fb=window.fb,q=fb.query(fb.collection(owner.db,'patrol_tracks'),
+          fb.where('cleanName','==',owner.staff),fb.where('status','==','ENDED'),fb.where('dutyActive','==',false),
+          fb.where('endDutyReportJob.version','==',1),fb.where('endDutyReportJob.state','==','PENDING'),fb.limit(100));
+        // Own the actual SDK request until it settles; no advisory deadline releases this flight.
+        const rows=await fb.getDocsFromServer(q);
+        if(owner!==window.dutyInitialReports||window.db!==owner.db||window.userProfile?.cleanName!==owner.staff)return;
+        owner.bootstrap='done';
+        rows.forEach(doc=>{if(dutyInitialReportEligible(doc.data().endDutyReportJob))dutyRememberInitialReport(doc.id);});
+        if(rows.size>=100){owner.bootstrap='more';showToast('More pending initial reports may remain. Reopen the application to continue discovery; failed reports require manual recovery.');}
+      }
+      for(const id of [...owner.ids]){
+        if(owner!==window.dutyInitialReports||window.db!==owner.db||window.userProfile?.cleanName!==owner.staff||dutyReportingOffline())return;
+        await dutyRecoverExactInitialReport(id,owner);
+      }
+    }catch(error){if(owner.bootstrap==='pending')owner.bootstrap='error';console.warn('Pending initial report recovery unavailable; retained for a connection or foreground event',error.message);}
+  })();
+  owner.flight=work;
+  try{return await work;}finally{if(owner.flight===work)owner.flight=null;}
 }
-if (!window.dutyReportRecoveryTimer) {
-  window.dutyReportRecoveryTimer=setInterval(()=>void dutyResumeReports(),900000);
-  window.addEventListener('online',()=>void dutyResumeReports());
-  window.addEventListener('pageshow',()=>void dutyResumeReports());
-  window.addEventListener('popstate',()=>void dutyResumeReports());
-  window.addEventListener('hashchange',()=>void dutyResumeReports());
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible') void dutyResumeReports();});
+// Connection/foreground events resume unattempted work only. Never retry failed reporting.
+if(!window.dutyInitialReportEventsInstalled){
+  window.dutyInitialReportEventsInstalled=true;
+  const resume=()=>{const owner=dutyInitialReportOwner();if(owner?.bootstrap==='error')owner.bootstrap='idle';void dutyResumeReports();};
+  window.addEventListener('online',resume);
+  window.addEventListener('pageshow',resume);
+  window.addEventListener('userProfileLoaded',resume);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')resume();});
   setTimeout(()=>void dutyResumeReports(),5000);
 }
+
 
 
 async function submitEndDuty(event) {
